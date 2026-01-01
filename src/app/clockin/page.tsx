@@ -56,6 +56,7 @@ interface QuizQuestion {
   optionC: string;
   optionD: string;
   correctAnswer: string;
+  explanation?: string;
 }
 
 function ClockInContent() {
@@ -167,7 +168,15 @@ function ClockInContent() {
               {isCorrect ? (
                 <>
                   <div className="text-green-600 text-2xl mb-4">✓</div>
-                  <p className="text-green-700 font-medium mb-6">Correct answer!</p>
+                  <p className="text-green-700 font-medium mb-4">Correct answer!</p>
+
+                  {question?.explanation && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                      <h3 className="text-blue-800 font-medium mb-2">Why is this the correct answer?</h3>
+                      <p className="text-blue-700 text-sm">{question.explanation}</p>
+                    </div>
+                  )}
+
                   <button
                     onClick={handleClockIn}
                     disabled={clockingIn}
@@ -179,8 +188,8 @@ function ClockInContent() {
               ) : (
                 <>
                   <div className="text-red-600 text-2xl mb-4">✗</div>
-                  <p className="text-red-700 font-medium mb-4">Incorrect answer.</p>
-                  <p className="text-gray-600 mb-6">Please try again.</p>
+                  <p className="text-red-700 font-medium mb-4">Wrong! Try again.</p>
+                  <p className="text-gray-600 mb-6">Please select the correct answer.</p>
                   <button
                     onClick={() => {
                       setShowResult(false);

@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import EmployeeManagement from './components/EmployeeManagement';
+import QuizManagement from './components/QuizManagement';
+import SalesManagement from './components/SalesManagement';
 
 // Telegram WebApp type declarations
 declare global {
@@ -226,16 +229,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {activeTab === 'employees' && (
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Employee Management</h3>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-500 text-center py-8">Employee management interface coming soon...</p>
-            </div>
-          </div>
-        )}
+        {activeTab === 'employees' && <EmployeeManagement />}
 
         {activeTab === 'clock-times' && (
           <div className="bg-white rounded-lg shadow-sm">
@@ -248,27 +242,9 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {activeTab === 'sales' && (
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Sales Management</h3>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-500 text-center py-8">Sales management interface coming soon...</p>
-            </div>
-          </div>
-        )}
+        {activeTab === 'sales' && <SalesManagement />}
 
-        {activeTab === 'quiz' && (
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Quiz Questions</h3>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-500 text-center py-8">Quiz management interface coming soon...</p>
-            </div>
-          </div>
-        )}
+        {activeTab === 'quiz' && <QuizManagement />}
 
         {activeTab === 'reports' && (
           <div className="bg-white rounded-lg shadow-sm">

@@ -43,6 +43,7 @@ export const quizQuestions = sqliteTable('quiz_questions', {
   optionC: text('option_c').notNull(),
   optionD: text('option_d').notNull(),
   correctAnswer: text('correct_answer').notNull(), // 'A', 'B', 'C', or 'D'
+  explanation: text('explanation'),
   active: integer('active', { mode: 'boolean' }).default(true).notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
 });

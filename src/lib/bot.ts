@@ -198,6 +198,52 @@ bot.on('callback_query', async (ctx: MyContext) => {
   if (!ctx.callbackQuery || !ctx.callbackQuery.data) return;
   const callbackData = ctx.callbackQuery.data;
 
+  // Handle stats period selection
+  if (callbackData.startsWith('stats_')) {
+    const period = callbackData.replace('stats_', '') as 'today' | 'week' | 'month' | 'biweekly';
+    const telegramId = ctx.from!.id.toString();
+    const employee = await getEmployeeByTelegramId(telegramId);
+
+    if (!employee) {
+      await ctx.answerCallbackQuery('Employee not found');
+      return;
+    }
+
+    const stats = await getEmployeeStats(employee.id, period);
+
+    let statsText = `📊 Your Stats - ${stats.periodLabel}\n\n`;
+    statsText += `⏰ Hours Worked: ${stats.totalHours.toFixed(1)}h\n`;
+    statsText += `💰 Total Sales: $${stats.totalSales.toFixed(2)}\n`;
+    statsText += `📈 Sales Count: ${stats.salesCount}\n`;
+    statsText += `📅 Days Worked: ${stats.daysWorked}\n`;
+
+    if (stats.salesCount > 0) {
+      statsText += `\n💵 Breakdown:\n`;
+      statsText += `Tips: $${stats.tipSales.toFixed(2)}\n`;
+      statsText += `PPV: $${stats.ppvSales.toFixed(2)}\n`;
+    }
+
+    statsText += `\n⚠️ *DISCLAIMER:*\n`;
+    statsText += `This is NOT net sales, and does not account for potential chargebacks and/or manual sales reassignment.`;
+
+    await ctx.editMessageText(statsText, {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: 'Today', callback_data: 'stats_today' },
+            { text: 'This Week', callback_data: 'stats_week' }
+          ],
+          [
+            { text: 'This Month', callback_data: 'stats_month' },
+            { text: 'Last 2 Weeks', callback_data: 'stats_biweekly' }
+          ]
+        ]
+      }
+    });
+    await ctx.answerCallbackQuery();
+    return;
+  }
+
   if (callbackData.startsWith('sale_category_')) {
     const category = callbackData.replace('sale_category_', '');
     ctx.session = { ...ctx.session, saleCategory: category };
@@ -236,57 +282,92 @@ bot.command('status', async (ctx: MyContext) => {
     return;
   }
 
-  const today = formatDate(new Date());
+  // Show period selection menu
+  await ctx.reply('📊 Select time period:', {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: 'Today', callback_data: 'stats_today' },
+          { text: 'This Week', callback_data: 'stats_week' }
+        ],
+        [
+          { text: 'This Month', callback_data: 'stats_month' },
+          { text: 'Last 2 Weeks', callback_data: 'stats_biweekly' }
+        ]
+      ]
+    }
+  });
+});
 
-  // Get today's clock in/out
-  const todaysClock = await db.select()
+async function getEmployeeStats(employeeId: number, period: 'today' | 'week' | 'month' | 'biweekly') {
+  const now = new Date();
+  let startDate: Date;
+  let endDate: Date = now;
+  let periodLabel: string;
+
+  switch (period) {
+    case 'today':
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      periodLabel = `Today (${formatDate(now)})`;
+      break;
+    case 'week':
+      startDate = new Date(now);
+      startDate.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+      periodLabel = 'This Week';
+      break;
+    case 'biweekly':
+      startDate = new Date(now);
+      startDate.setDate(now.getDate() - 13); // Last 14 days
+      periodLabel = 'Last 2 Weeks';
+      break;
+    case 'month':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      periodLabel = 'This Month';
+      break;
+  }
+
+  const startDateStr = formatDate(startDate);
+  const endDateStr = formatDate(endDate);
+
+  // Get clock-ins for period
+  const clockIns = await db.select()
     .from(clockIns)
     .where(and(
-      eq(clockIns.employeeId, employee.id),
-      eq(clockIns.date, today)
-    ))
-    .limit(1);
-
-  // Get today's sales
-  const todaysSales = await db.select()
-    .from(sales)
-    .where(and(
-      eq(sales.employeeId, employee.id),
-      eq(sales.date, today)
+      eq(clockIns.employeeId, employeeId),
+      sql`${clockIns.date} >= ${startDateStr}`,
+      sql`${clockIns.date} <= ${endDateStr}`
     ));
 
-  const totalSales = todaysSales.reduce((sum, sale) => sum + sale.amount, 0);
+  // Get sales for period
+  const salesData = await db.select()
+    .from(sales)
+    .where(and(
+      eq(sales.employeeId, employeeId),
+      sql`${sales.date} >= ${startDateStr}`,
+      sql`${sales.date} <= ${endDateStr}`
+    ));
 
-  let statusText = `📊 Today's Status (${today})\n\n`;
+  // Calculate totals
+  const totalHours = clockIns.reduce((sum, clock) => sum + (clock.totalHours || 0), 0);
+  const totalSales = salesData.reduce((sum, sale) => sum + sale.amount, 0);
+  const tipSales = salesData.filter(s => s.category === 'tip').reduce((sum, s) => sum + s.amount, 0);
+  const ppvSales = salesData.filter(s => s.category === 'ppv').reduce((sum, s) => sum + s.amount, 0);
 
-  if (todaysClock[0]) {
-    const clockIn = new Date(todaysClock[0].clockInTime);
-    statusText += `Clock In: ${clockIn.toLocaleTimeString()}\n`;
+  // Days worked (unique dates with clock-ins)
+  const workedDates = new Set(clockIns.map(c => c.date));
+  const daysWorked = workedDates.size;
 
-    if (todaysClock[0].clockOutTime) {
-      const clockOut = new Date(todaysClock[0].clockOutTime);
-      statusText += `Clock Out: ${clockOut.toLocaleTimeString()}\n`;
-      statusText += `Hours Worked: ${todaysClock[0].totalHours}h\n`;
-    } else {
-      statusText += `Status: Currently clocked in\n`;
-    }
-  } else {
-    statusText += `No clock-in recorded today\n`;
-  }
-
-  statusText += `\nSales Today: $${totalSales.toFixed(2)}\n`;
-  statusText += `Sales Count: ${todaysSales.length}`;
-
-  if (todaysSales.length > 0) {
-    statusText += `\n\nBreakdown:\n`;
-    const tipSales = todaysSales.filter(s => s.category === 'tip').reduce((sum, s) => sum + s.amount, 0);
-    const ppvSales = todaysSales.filter(s => s.category === 'ppv').reduce((sum, s) => sum + s.amount, 0);
-    statusText += `Tips: $${tipSales.toFixed(2)}\n`;
-    statusText += `PPV: $${ppvSales.toFixed(2)}`;
-  }
-
-  await ctx.reply(statusText);
-});
+  return {
+    periodLabel,
+    totalHours,
+    totalSales,
+    tipSales,
+    ppvSales,
+    salesCount: salesData.length,
+    daysWorked,
+    clockInsCount: clockIns.length
+  };
+}
 
 bot.command('admin', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
