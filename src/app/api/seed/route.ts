@@ -61,7 +61,7 @@ export async function POST() {
   } catch (error) {
     console.error('Error seeding quiz questions:', error);
     return NextResponse.json(
-      { error: 'Failed to seed quiz questions', details: error.message },
+      { error: 'Failed to seed quiz questions', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

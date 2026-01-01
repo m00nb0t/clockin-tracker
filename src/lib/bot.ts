@@ -1,9 +1,23 @@
-import { Bot, Context, InlineKeyboard } from 'grammy';
+import { Bot, Context, InlineKeyboard, session, SessionFlavor } from 'grammy';
 import { db } from './db';
 import { employees, admins, clockIns, sales, quizQuestions, quizAttempts } from './db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 
-export const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
+interface SessionData {
+  awaitingName?: boolean;
+  saleCategory?: string;
+  addingSales?: boolean;
+  salesSession?: Array<{ category: string; amount: number }>;
+}
+
+type MyContext = Context & SessionFlavor<SessionData>;
+
+export const bot = new Bot<MyContext>(process.env.TELEGRAM_BOT_TOKEN!);
+
+// Set up session middleware
+bot.use(session({
+  initial: (): SessionData => ({}),
+}));
 
 // Helper functions
 async function getEmployeeByTelegramId(telegramId: string) {
@@ -26,7 +40,7 @@ function calculateHours(clockInTime: Date, clockOutTime?: Date): number | null {
 }
 
 // Bot commands
-bot.command('start', async (ctx) => {
+bot.command('start', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
   let employee = await getEmployeeByTelegramId(telegramId);
 
@@ -51,9 +65,9 @@ bot.command('start', async (ctx) => {
 });
 
 // Handle name input for new users
-bot.on('message:text', async (ctx) => {
-  if (ctx.session?.awaitingName) {
-    const name = ctx.message.text.trim();
+bot.on('message:text', async (ctx: MyContext) => {
+  if (ctx.session?.awaitingName && ctx.message) {
+    const name = ctx.message.text!.trim();
     const telegramId = ctx.from!.id.toString();
 
     if (name.length < 2) {
@@ -80,7 +94,7 @@ bot.on('message:text', async (ctx) => {
   }
 });
 
-bot.command('clockin', async (ctx) => {
+bot.command('clockin', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
   const employee = await getEmployeeByTelegramId(telegramId);
 
@@ -117,7 +131,7 @@ bot.command('clockin', async (ctx) => {
   });
 });
 
-bot.command('clockout', async (ctx) => {
+bot.command('clockout', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
   const employee = await getEmployeeByTelegramId(telegramId);
 
@@ -146,7 +160,7 @@ bot.command('clockout', async (ctx) => {
 
   await db.update(clockIns)
     .set({
-      clockOutTime: Math.floor(clockOutTime.getTime() / 1000),
+      clockOutTime: clockOutTime,
       totalHours
     })
     .where(eq(clockIns.id, existingClockIn[0].id));
@@ -158,7 +172,7 @@ bot.command('clockout', async (ctx) => {
   );
 });
 
-bot.command('addsale', async (ctx) => {
+bot.command('addsale', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
   const employee = await getEmployeeByTelegramId(telegramId);
 
@@ -180,7 +194,8 @@ bot.command('addsale', async (ctx) => {
   });
 });
 
-bot.on('callback_query', async (ctx) => {
+bot.on('callback_query', async (ctx: MyContext) => {
+  if (!ctx.callbackQuery || !ctx.callbackQuery.data) return;
   const callbackData = ctx.callbackQuery.data;
 
   if (callbackData.startsWith('sale_category_')) {
@@ -212,7 +227,7 @@ bot.on('callback_query', async (ctx) => {
   }
 });
 
-bot.command('status', async (ctx) => {
+bot.command('status', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
   const employee = await getEmployeeByTelegramId(telegramId);
 
@@ -273,7 +288,7 @@ bot.command('status', async (ctx) => {
   await ctx.reply(statusText);
 });
 
-bot.command('admin', async (ctx) => {
+bot.command('admin', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
   const employee = await getEmployeeByTelegramId(telegramId);
 
@@ -294,9 +309,9 @@ bot.command('admin', async (ctx) => {
 });
 
 // Handle sale amount input
-bot.on('message:text', async (ctx) => {
-  if (ctx.session?.saleCategory && ctx.session?.addingSales) {
-    const amountText = ctx.message.text.trim();
+bot.on('message:text', async (ctx: MyContext) => {
+  if (ctx.session?.saleCategory && ctx.session?.addingSales && ctx.message) {
+    const amountText = ctx.message.text!.trim();
     const amount = parseFloat(amountText);
 
     if (isNaN(amount) || amount <= 0) {

@@ -3,6 +3,51 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+// Telegram WebApp type declarations
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: {
+        initData: string;
+        initDataUnsafe: any;
+        version: string;
+        platform: string;
+        colorScheme: string;
+        themeParams: any;
+        isExpanded: boolean;
+        viewportHeight: number;
+        viewportStableHeight: number;
+        headerColor: string;
+        backgroundColor: string;
+        isClosingConfirmationEnabled: boolean;
+        expand(): void;
+        close(): void;
+        showPopup(params: any): void;
+        showAlert(message: string): void;
+        showConfirm(message: string): Promise<boolean>;
+        enableClosingConfirmation(): void;
+        disableClosingConfirmation(): void;
+        onEvent(eventType: string, eventHandler: Function): void;
+        offEvent(eventType: string, eventHandler: Function): void;
+        sendData(data: string): void;
+        switchInlineQuery(query: string, choose_chat_types?: string[]): void;
+        openLink(url: string): void;
+        openTelegramLink(url: string): void;
+        openInvoice(url: string): void;
+        showScanQrPopup(params: any): void;
+        closeScanQrPopup(): void;
+        readTextFromClipboard(): Promise<string>;
+        requestWriteAccess(): Promise<boolean>;
+        requestContact(): Promise<any>;
+        ready(): void;
+        MainButton: any;
+        BackButton: any;
+        SettingsButton: any;
+      };
+    };
+  }
+}
+
 interface DashboardStats {
   totalEmployees: number;
   activeEmployees: number;

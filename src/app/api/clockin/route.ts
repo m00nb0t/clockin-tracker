@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Create clock-in record
     await db.insert(clockIns).values({
       employeeId: employee.id,
-      clockInTime: Math.floor(now.getTime() / 1000),
+      clockInTime: now,
       date: today,
     });
 
