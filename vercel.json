@@ -1,13 +1,7 @@
 {
   "functions": {
     "src/app/api/**/*.ts": {
-      "runtime": "@vercel/node"
+      "runtime": "@vercel/node@20"
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/bot/webhook",
-      "destination": "/api/bot/webhook"
-    }
-  ]
+  }
 }
