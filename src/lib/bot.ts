@@ -330,7 +330,7 @@ async function getEmployeeStats(employeeId: number, period: 'today' | 'week' | '
   const endDateStr = formatDate(endDate);
 
   // Get clock-ins for period
-  const clockIns = await db.select()
+  const clockInsData = await db.select()
     .from(clockIns)
     .where(and(
       eq(clockIns.employeeId, employeeId),
@@ -348,13 +348,13 @@ async function getEmployeeStats(employeeId: number, period: 'today' | 'week' | '
     ));
 
   // Calculate totals
-  const totalHours = clockIns.reduce((sum, clock) => sum + (clock.totalHours || 0), 0);
+  const totalHours = clockInsData.reduce((sum, clock) => sum + (clock.totalHours || 0), 0);
   const totalSales = salesData.reduce((sum, sale) => sum + sale.amount, 0);
   const tipSales = salesData.filter(s => s.category === 'tip').reduce((sum, s) => sum + s.amount, 0);
   const ppvSales = salesData.filter(s => s.category === 'ppv').reduce((sum, s) => sum + s.amount, 0);
 
   // Days worked (unique dates with clock-ins)
-  const workedDates = new Set(clockIns.map(c => c.date));
+  const workedDates = new Set(clockInsData.map(c => c.date));
   const daysWorked = workedDates.size;
 
   return {
@@ -365,7 +365,7 @@ async function getEmployeeStats(employeeId: number, period: 'today' | 'week' | '
     ppvSales,
     salesCount: salesData.length,
     daysWorked,
-    clockInsCount: clockIns.length
+    clockInsCount: clockInsData.length
   };
 }
 
