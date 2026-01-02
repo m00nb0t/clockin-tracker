@@ -24,11 +24,11 @@ export async function GET() {
 // POST /api/admin/quiz - Create new quiz question
 export async function POST(request: NextRequest) {
   try {
-    const { question, optionA, optionB, optionC, optionD, correctAnswer, explanation } = await request.json();
+    const { sequenceNumber, question, optionA, optionB, optionC, optionD, correctAnswer, explanation } = await request.json();
 
-    if (!question || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {
+    if (!sequenceNumber || !question || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {
       return NextResponse.json(
-        { error: 'All fields are required except explanation' },
+        { error: 'Sequence number and all question fields are required except explanation' },
         { status: 400 }
       );
     }
@@ -40,10 +40,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if sequence number already exists
+    const existingSequence = await db
+      .select()
+      .from(quizQuestions)
+      .where(eq(quizQuestions.sequenceNumber, sequenceNumber))
+      .limit(1);
+
+    if (existingSequence[0]) {
+      return NextResponse.json(
+        { error: 'Sequence number already exists' },
+        { status: 400 }
+      );
+    }
+
     // Create quiz question
     const result = await db
       .insert(quizQuestions)
       .values({
+        sequenceNumber,
         question: question.trim(),
         optionA: optionA.trim(),
         optionB: optionB.trim(),

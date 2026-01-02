@@ -35,8 +35,16 @@ export const sales = sqliteTable('sales', {
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
 });
 
+export const quizSettings = sqliteTable('quiz_settings', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  startDate: text('start_date').notNull(), // YYYY-MM-DD format
+  timezone: text('timezone').default('Asia/Shanghai').notNull(), // GMT+8
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
+});
+
 export const quizQuestions = sqliteTable('quiz_questions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  sequenceNumber: integer('sequence_number').notNull(), // 1, 2, 3, 4... for ordering
   question: text('question').notNull(),
   optionA: text('option_a').notNull(),
   optionB: text('option_b').notNull(),
@@ -54,5 +62,6 @@ export const quizAttempts = sqliteTable('quiz_attempts', {
   questionId: integer('question_id').references(() => quizQuestions.id).notNull(),
   selectedAnswer: text('selected_answer').notNull(),
   correct: integer('correct', { mode: 'boolean' }).notNull(),
+  attemptNumber: integer('attempt_number').notNull(), // 1st, 2nd, 3rd attempt for this question
   attemptedAt: integer('attempted_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
 });

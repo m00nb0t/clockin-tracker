@@ -102,17 +102,30 @@ function ClockInContent() {
   };
 
   const handleClockIn = async () => {
-    if (!userId) return;
+    if (!userId || !question) return;
 
     setClockingIn(true);
     try {
-      const response = await fetch('/api/clockin', {
+      // Record quiz attempt
+      const attemptResponse = await fetch('/api/quiz/attempt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          questionId: question.id,
+          selectedAnswer,
+          correct: isCorrect,
+          attemptNumber: 1, // For now, simplified - could track multiple attempts
+        }),
+      });
+
+      const clockinResponse = await fetch('/api/clockin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
       });
 
-      if (response.ok) {
+      if (clockinResponse.ok) {
         // Send success message back to Telegram
         if (window.Telegram?.WebApp) {
           window.Telegram.WebApp.sendData(JSON.stringify({

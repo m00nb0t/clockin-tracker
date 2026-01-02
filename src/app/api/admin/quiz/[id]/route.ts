@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizQuestions, quizAttempts } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 // GET /api/admin/quiz/[id] - Get single quiz question
 export async function GET(
@@ -43,11 +43,11 @@ export async function PUT(
   try {
     const { id } = await params;
     const questionId = parseInt(id);
-    const { question, optionA, optionB, optionC, optionD, correctAnswer, explanation, active } = await request.json();
+    const { sequenceNumber, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, active } = await request.json();
 
-    if (!question || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {
+    if (!sequenceNumber || !question || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {
       return NextResponse.json(
-        { error: 'All fields are required except explanation' },
+        { error: 'Sequence number and all question fields are required except explanation' },
         { status: 400 }
       );
     }
@@ -59,10 +59,28 @@ export async function PUT(
       );
     }
 
+    // Check if sequence number already exists for another question
+    const existingSequence = await db
+      .select()
+      .from(quizQuestions)
+      .where(and(
+        eq(quizQuestions.sequenceNumber, sequenceNumber),
+        sql`${quizQuestions.id} != ${questionId}`
+      ))
+      .limit(1);
+
+    if (existingSequence[0]) {
+      return NextResponse.json(
+        { error: 'Sequence number already exists for another question' },
+        { status: 400 }
+      );
+    }
+
     // Update quiz question
     const result = await db
       .update(quizQuestions)
       .set({
+        sequenceNumber,
         question: question.trim(),
         optionA: optionA.trim(),
         optionB: optionB.trim(),

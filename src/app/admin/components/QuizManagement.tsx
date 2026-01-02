@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 
 interface QuizQuestion {
   id: number;
+  sequenceNumber: number;
   question: string;
   optionA: string;
   optionB: string;
@@ -15,7 +16,15 @@ interface QuizQuestion {
   createdAt: string;
 }
 
+interface QuizSettings {
+  id: number;
+  startDate: string;
+  timezone: string;
+  updatedAt: string;
+}
+
 interface QuizFormData {
+  sequenceNumber: number;
   question: string;
   optionA: string;
   optionB: string;
@@ -28,10 +37,13 @@ interface QuizFormData {
 
 export default function QuizManagement() {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [settings, setSettings] = useState<QuizSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<QuizQuestion | null>(null);
   const [formData, setFormData] = useState<QuizFormData>({
+    sequenceNumber: 1,
     question: '',
     optionA: '',
     optionB: '',
@@ -42,9 +54,31 @@ export default function QuizManagement() {
     active: true,
   });
 
+  const [settingsFormData, setSettingsFormData] = useState({
+    startDate: '',
+    timezone: 'Asia/Shanghai',
+  });
+
   useEffect(() => {
     fetchQuestions();
+    fetchSettings();
   }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('/api/admin/quiz/settings');
+      if (response.ok) {
+        const data = await response.json();
+        setSettings(data);
+        setSettingsFormData({
+          startDate: data.startDate,
+          timezone: data.timezone,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching quiz settings:', error);
+    }
+  };
 
   const fetchQuestions = async () => {
     try {
@@ -93,6 +127,7 @@ export default function QuizManagement() {
   const handleEdit = (question: QuizQuestion) => {
     setEditingQuestion(question);
     setFormData({
+      sequenceNumber: question.sequenceNumber,
       question: question.question,
       optionA: question.optionA,
       optionB: question.optionB,
@@ -127,10 +162,35 @@ export default function QuizManagement() {
     }
   };
 
+  const handleSettingsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch('/api/admin/quiz/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settingsFormData),
+      });
+
+      if (response.ok) {
+        await fetchSettings();
+        setShowSettings(false);
+        alert('Quiz settings updated successfully!');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to update settings');
+      }
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      alert('Error updating settings');
+    }
+  };
+
   const resetForm = () => {
     setShowAddForm(false);
     setEditingQuestion(null);
     setFormData({
+      sequenceNumber: Math.max(...questions.map(q => q.sequenceNumber), 0) + 1,
       question: '',
       optionA: '',
       optionB: '',
@@ -161,13 +221,28 @@ export default function QuizManagement() {
   return (
     <div className="bg-white rounded-lg shadow-sm">
       <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">Quiz Questions</h3>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
-        >
-          Add Question
-        </button>
+        <div>
+          <h3 className="text-lg font-medium text-gray-900">Quiz Questions</h3>
+          {settings && (
+            <p className="text-sm text-gray-600">
+              Start Date: {settings.startDate} ({settings.timezone})
+            </p>
+          )}
+        </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setShowSettings(true)}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium"
+          >
+            Settings
+          </button>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
+          >
+            Add Question
+          </button>
+        </div>
       </div>
 
       <div className="p-6">
@@ -176,6 +251,9 @@ export default function QuizManagement() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  #
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Question
                 </th>
@@ -194,8 +272,13 @@ export default function QuizManagement() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {questions.map((question) => (
+              {questions
+                .sort((a, b) => a.sequenceNumber - b.sequenceNumber)
+                .map((question) => (
                 <tr key={question.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {question.sequenceNumber}
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
                     {question.question}
                   </td>
@@ -238,6 +321,65 @@ export default function QuizManagement() {
           <p className="text-gray-500 text-center py-8">No quiz questions found.</p>
         )}
 
+        {/* Settings Modal */}
+        {showSettings && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Quiz Settings</h3>
+
+                <form onSubmit={handleSettingsSubmit}>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Start Date *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={settingsFormData.startDate}
+                      onChange={(e) => setSettingsFormData({ ...settingsFormData, startDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Questions will be scheduled sequentially starting from this date
+                    </p>
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Timezone
+                    </label>
+                    <select
+                      value={settingsFormData.timezone}
+                      onChange={(e) => setSettingsFormData({ ...settingsFormData, timezone: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="Asia/Shanghai">Asia/Shanghai (GMT+8)</option>
+                      <option value="UTC">UTC</option>
+                    </select>
+                  </div>
+
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowSettings(false)}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+                    >
+                      Update Settings
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Add/Edit Form Modal */}
         {(showAddForm || editingQuestion) && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -248,6 +390,21 @@ export default function QuizManagement() {
                 </h3>
 
                 <form onSubmit={handleSubmit}>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sequence Number *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={formData.sequenceNumber}
+                      onChange={(e) => setFormData({ ...formData, sequenceNumber: parseInt(e.target.value) })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="1"
+                    />
+                  </div>
+
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Question *
