@@ -59,6 +59,12 @@ interface QuizQuestion {
   explanation?: string;
 }
 
+interface Creator {
+  id: number;
+  name: string;
+  platform: 'fanvue' | 'other';
+}
+
 function ClockInContent() {
   const searchParams = useSearchParams();
   const userId = searchParams.get('user');
@@ -69,6 +75,12 @@ function ClockInContent() {
   const [isCorrect, setIsCorrect] = useState(false);
   const [loading, setLoading] = useState(true);
   const [clockingIn, setClockingIn] = useState(false);
+
+  // Creator selection state
+  const [showCreatorSelection, setShowCreatorSelection] = useState(false);
+  const [creators, setCreators] = useState<Creator[]>([]);
+  const [selectedCreators, setSelectedCreators] = useState<number[]>([]);
+  const [loadingCreators, setLoadingCreators] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -95,34 +107,71 @@ function ClockInContent() {
     }
   };
 
+  const fetchCreators = async () => {
+    setLoadingCreators(true);
+    try {
+      const response = await fetch('/api/creators');
+      if (response.ok) {
+        const data = await response.json();
+        setCreators(data.creators);
+      }
+    } catch (error) {
+      console.error('Error fetching creators:', error);
+    } finally {
+      setLoadingCreators(false);
+    }
+  };
+
+  const handleCreatorToggle = (creatorId: number) => {
+    setSelectedCreators(prev =>
+      prev.includes(creatorId)
+        ? prev.filter(id => id !== creatorId)
+        : [...prev, creatorId]
+    );
+  };
+
   const handleAnswerSelect = (answer: string) => {
     setSelectedAnswer(answer);
     setShowResult(true);
     setIsCorrect(answer === question?.correctAnswer);
   };
 
-  const handleClockIn = async () => {
-    if (!userId || !question) return;
-
-    setClockingIn(true);
+  const handleQuizSuccess = async () => {
+    // Record quiz attempt first
     try {
-      // Record quiz attempt
       const attemptResponse = await fetch('/api/quiz/attempt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          questionId: question.id,
+          questionId: question!.id,
           selectedAnswer,
           correct: isCorrect,
-          attemptNumber: 1, // For now, simplified - could track multiple attempts
+          attemptNumber: 1,
         }),
       });
 
+      // Now show creator selection
+      await fetchCreators();
+      setShowCreatorSelection(true);
+    } catch (error) {
+      console.error('Quiz attempt error:', error);
+      alert('Error recording quiz attempt. Please try again.');
+    }
+  };
+
+  const handleFinalClockIn = async () => {
+    if (!userId) return;
+
+    setClockingIn(true);
+    try {
       const clockinResponse = await fetch('/api/clockin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({
+          userId,
+          creatorIds: selectedCreators
+        }),
       });
 
       if (clockinResponse.ok) {
@@ -130,13 +179,14 @@ function ClockInContent() {
         if (window.Telegram?.WebApp) {
           window.Telegram.WebApp.sendData(JSON.stringify({
             action: 'clockin_success',
-            message: 'Successfully clocked in!'
+            message: `Successfully clocked in for ${selectedCreators.length} creator(s)!`
           }));
         }
         // Close the mini app
         window.Telegram?.WebApp?.close();
       } else {
-        alert('Failed to clock in. Please try again.');
+        const error = await clockinResponse.json();
+        alert(error.error || 'Failed to clock in. Please try again.');
       }
     } catch (error) {
       console.error('Clock-in error:', error);
@@ -169,12 +219,78 @@ function ClockInContent() {
             <div className="text-center">
               <p className="text-gray-600 mb-4">No quiz questions available.</p>
               <button
-                onClick={handleClockIn}
+                onClick={async () => {
+                  await fetchCreators();
+                  setShowCreatorSelection(true);
+                }}
                 disabled={clockingIn}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
               >
-                {clockingIn ? 'Clocking In...' : 'Clock In'}
+                {clockingIn ? 'Loading...' : 'Continue to Clock In'}
               </button>
+            </div>
+          ) : showCreatorSelection ? (
+            <div>
+              <h2 className="text-lg font-medium text-gray-900 mb-6 text-center">
+                Select Creators You're Working On
+              </h2>
+
+              {loadingCreators ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading creators...</p>
+                </div>
+              ) : creators.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600 mb-4">No active creators available.</p>
+                  <button
+                    onClick={handleFinalClockIn}
+                    disabled={clockingIn}
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {clockingIn ? 'Clocking In...' : 'Clock In (No Creators)'}
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Select all creators you'll be working on today. This determines tip assignment.
+                  </p>
+
+                  <div className="space-y-3 mb-6">
+                    {creators.map((creator) => (
+                      <label key={creator.id} className="flex items-center p-3 border border-gray-200 rounded-lg hover:border-blue-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedCreators.includes(creator.id)}
+                          onChange={() => handleCreatorToggle(creator.id)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <div className="ml-3">
+                          <div className="text-sm font-medium text-gray-900">{creator.name}</div>
+                          <div className="text-xs text-gray-500 capitalize">{creator.platform}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => setShowCreatorSelection(false)}
+                      className="flex-1 bg-gray-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-700"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleFinalClockIn}
+                      disabled={clockingIn || selectedCreators.length === 0}
+                      className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {clockingIn ? 'Clocking In...' : `Clock In (${selectedCreators.length})`}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : showResult ? (
             <div className="text-center">
@@ -191,11 +307,10 @@ function ClockInContent() {
                   )}
 
                   <button
-                    onClick={handleClockIn}
-                    disabled={clockingIn}
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                    onClick={handleQuizSuccess}
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700"
                   >
-                    {clockingIn ? 'Clocking In...' : 'Confirm Clock In'}
+                    Continue to Creator Selection
                   </button>
                 </>
               ) : (

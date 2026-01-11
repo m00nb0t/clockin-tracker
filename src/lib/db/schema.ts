@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
 
 export const employees = sqliteTable('employees', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -23,6 +23,29 @@ export const clockIns = sqliteTable('clock_ins', {
   clockOutTime: integer('clock_out_time', { mode: 'timestamp' }),
   date: text('date').notNull(), // YYYY-MM-DD format
   totalHours: real('total_hours'),
+}, (table) => ({
+  employeeIdIdx: index('clock_ins_employee_id_idx').on(table.employeeId),
+  clockInTimeIdx: index('clock_ins_clock_in_time_idx').on(table.clockInTime),
+  dateIdx: index('clock_ins_date_idx').on(table.date),
+}));
+
+export const creators = sqliteTable('creators', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(), // Display name (e.g., "Alice Johnson")
+  fanvueUuid: text('fanvue_uuid'), // NULL for non-Fanvue creators
+  platform: text('platform').default('fanvue').notNull(), // 'fanvue', 'other'
+  active: integer('active', { mode: 'boolean' }).default(true).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
+}, (table) => ({
+  fanvueUuidIdx: index('creators_fanvue_uuid_idx').on(table.fanvueUuid),
+  activeIdx: index('creators_active_idx').on(table.active),
+}));
+
+export const clockInCreators = sqliteTable('clock_in_creators', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  clockInId: integer('clock_in_id').references(() => clockIns.id).notNull(),
+  creatorId: integer('creator_id').references(() => creators.id).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
 });
 
 export const sales = sqliteTable('sales', {
@@ -33,6 +56,43 @@ export const sales = sqliteTable('sales', {
   date: text('date').notNull(), // YYYY-MM-DD format
   description: text('description'),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
+  source: text('source').default('manual').notNull(), // 'manual' or 'fanvue_auto'
+  creatorId: integer('creator_id').references(() => creators.id), // Which creator this sale is for
+}, (table) => ({
+  dateIdx: index('sales_date_idx').on(table.date),
+  sourceIdx: index('sales_source_idx').on(table.source),
+  creatorIdIdx: index('sales_creator_id_idx').on(table.creatorId),
+}));
+
+export const fanvueTips = sqliteTable('fanvue_tips', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  tipId: text('tip_id').unique().notNull(), // Fanvue's tip ID
+  recipientUuid: text('recipient_uuid').notNull(),
+  senderUuid: text('sender_uuid').notNull(),
+  amount: real('amount').notNull(), // In dollars (converted from cents)
+  timestamp: integer('timestamp', { mode: 'timestamp' }).notNull(),
+  context: text('context').notNull(), // 'post' or 'message'
+  assignedEmployeeId: integer('assigned_employee_id').references(() => employees.id),
+  salesId: integer('sales_id').references(() => sales.id), // Links to auto-created sales record
+  status: text('status').default('processed').notNull(), // 'processed', 'unassigned'
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
+}, (table) => ({
+  tipIdIdx: index('fanvue_tips_tip_id_idx').on(table.tipId),
+  recipientUuidIdx: index('fanvue_tips_recipient_uuid_idx').on(table.recipientUuid),
+  timestampIdx: index('fanvue_tips_timestamp_idx').on(table.timestamp),
+  assignedEmployeeIdx: index('fanvue_tips_assigned_employee_idx').on(table.assignedEmployeeId),
+}));
+
+export const tipDisputes = sqliteTable('tip_disputes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  tipId: integer('tip_id').references(() => fanvueTips.id).notNull(),
+  disputedBy: integer('disputed_by').references(() => employees.id).notNull(),
+  reason: text('reason'),
+  status: text('status').default('pending').notNull(), // 'pending', 'resolved', 'rejected'
+  resolvedBy: integer('resolved_by').references(() => employees.id),
+  resolution: text('resolution'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
+  resolvedAt: integer('resolved_at', { mode: 'timestamp' }),
 });
 
 export const quizSettings = sqliteTable('quiz_settings', {

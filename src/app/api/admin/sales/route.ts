@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { sales, employees } from '@/lib/db/schema';
+import { sales, employees, creators } from '@/lib/db/schema';
 import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
 
 // GET /api/admin/sales - List all sales with filtering
@@ -9,12 +9,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employeeId');
     const category = searchParams.get('category');
+    const source = searchParams.get('source');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    let whereConditions = [];
+    const whereConditions = [];
 
     if (employeeId) {
       whereConditions.push(eq(sales.employeeId, parseInt(employeeId)));
@@ -22,6 +23,10 @@ export async function GET(request: NextRequest) {
 
     if (category) {
       whereConditions.push(eq(sales.category, category));
+    }
+
+    if (source) {
+      whereConditions.push(eq(sales.source, source));
     }
 
     if (startDate) {
@@ -42,9 +47,13 @@ export async function GET(request: NextRequest) {
         date: sales.date,
         description: sales.description,
         createdAt: sales.createdAt,
+        source: sales.source,
+        creatorId: sales.creatorId,
+        creatorName: creators.name,
       })
       .from(sales)
       .leftJoin(employees, eq(sales.employeeId, employees.id))
+      .leftJoin(creators, eq(sales.creatorId, creators.id))
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
       .orderBy(desc(sales.createdAt))
       .limit(limit)

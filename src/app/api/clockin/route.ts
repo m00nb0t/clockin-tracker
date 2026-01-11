@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { employees, clockIns } from '@/lib/db/schema';
+import { employees, clockIns, clockInCreators, creators } from '@/lib/db/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await request.json();
+    const { userId, creatorIds } = await request.json();
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 });
@@ -65,13 +65,46 @@ export async function POST(request: NextRequest) {
     }
 
     // Create clock-in record
-    await db.insert(clockIns).values({
+    const clockInResult = await db.insert(clockIns).values({
       employeeId: employee.id,
       clockInTime: now,
       date: today,
-    });
+    }).returning();
 
-    return NextResponse.json({ success: true, message: 'Clocked in successfully' });
+    const clockInId = clockInResult[0].id;
+
+    // Create clock-in creator associations if provided
+    if (creatorIds && Array.isArray(creatorIds) && creatorIds.length > 0) {
+      // Validate that all creator IDs exist and are active
+      for (const creatorId of creatorIds) {
+        const creatorResult = await db.select()
+          .from(creators)
+          .where(and(
+            eq(creators.id, parseInt(creatorId)),
+            eq(creators.active, true)
+          ))
+          .limit(1);
+
+        if (!creatorResult[0]) {
+          return NextResponse.json({
+            error: `Invalid creator ID: ${creatorId}`
+          }, { status: 400 });
+        }
+
+        // Create association
+        await db.insert(clockInCreators).values({
+          clockInId,
+          creatorId: parseInt(creatorId),
+        });
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Clocked in successfully',
+      clockInId,
+      creatorsSelected: creatorIds?.length || 0
+    });
   } catch (error) {
     console.error('Clock-in error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

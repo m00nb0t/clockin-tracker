@@ -11,6 +11,9 @@ interface SalesEntry {
   date: string;
   description?: string;
   createdAt: string;
+  source: 'manual' | 'fanvue_auto';
+  creatorId?: number;
+  creatorName?: string;
 }
 
 interface Employee {
@@ -31,6 +34,7 @@ interface SalesFormData {
 interface SalesFilters {
   employeeId: string;
   category: string;
+  source: string;
   startDate: string;
   endDate: string;
 }
@@ -45,6 +49,7 @@ export default function SalesManagement() {
   const [filters, setFilters] = useState<SalesFilters>({
     employeeId: '',
     category: '',
+    source: '',
     startDate: '',
     endDate: '',
   });
@@ -79,6 +84,7 @@ export default function SalesManagement() {
       const params = new URLSearchParams();
       if (filters.employeeId) params.append('employeeId', filters.employeeId);
       if (filters.category) params.append('category', filters.category);
+      if (filters.source) params.append('source', filters.source);
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
 
@@ -177,6 +183,7 @@ export default function SalesManagement() {
     setFilters({
       employeeId: '',
       category: '',
+      source: '',
       startDate: '',
       endDate: '',
     });
@@ -240,6 +247,16 @@ export default function SalesManagement() {
               <option value="ppv">PPV</option>
             </select>
 
+            <select
+              value={filters.source}
+              onChange={(e) => setFilters({ ...filters, source: e.target.value })}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Sources</option>
+              <option value="manual">Manual Entry</option>
+              <option value="fanvue_auto">Fanvue Auto</option>
+            </select>
+
             <input
               type="date"
               value={filters.startDate}
@@ -297,13 +314,16 @@ export default function SalesManagement() {
                   Category
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Source
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Amount
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
+                  Creator
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
+                  Date
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -319,14 +339,23 @@ export default function SalesManagement() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
                     {sale.category}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      sale.source === 'fanvue_auto'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {sale.source === 'fanvue_auto' ? 'Auto' : 'Manual'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     ${sale.amount.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(sale.date).toLocaleDateString()}
+                    {sale.creatorName || '-'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                    {sale.description || '-'}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(sale.date).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button

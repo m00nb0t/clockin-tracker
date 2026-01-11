@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import EmployeeManagement from './components/EmployeeManagement';
 import QuizManagement from './components/QuizManagement';
 import SalesManagement from './components/SalesManagement';
+import CreatorManagement from './components/CreatorManagement';
+import DisputeManagement from './components/DisputeManagement';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Telegram WebApp type declarations
 declare global {
@@ -94,6 +97,8 @@ export default function AdminDashboard() {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'employees', label: 'Employees' },
+    { id: 'creators', label: 'Creators' },
+    { id: 'disputes', label: 'Tip Disputes' },
     { id: 'clock-times', label: 'Clock Times' },
     { id: 'sales', label: 'Sales' },
     { id: 'quiz', label: 'Quiz Questions' },
@@ -148,7 +153,8 @@ export default function AdminDashboard() {
 
       {/* Content */}
       <main className="p-6">
-        {activeTab === 'dashboard' && (
+        <ErrorBoundary>
+          {activeTab === 'dashboard' && (
           <div className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -231,6 +237,10 @@ export default function AdminDashboard() {
 
         {activeTab === 'employees' && <EmployeeManagement />}
 
+        {activeTab === 'creators' && <CreatorManagement />}
+
+        {activeTab === 'disputes' && <DisputeManagement />}
+
         {activeTab === 'clock-times' && (
           <div className="bg-white rounded-lg shadow-sm">
             <div className="px-6 py-4 border-b border-gray-200">
@@ -256,6 +266,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+        </ErrorBoundary>
       </main>
     </div>
   );

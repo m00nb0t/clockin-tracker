@@ -1,6 +1,6 @@
 import { Bot, Context, InlineKeyboard, session, SessionFlavor } from 'grammy';
 import { db } from './db';
-import { employees, admins, clockIns, sales, quizQuestions, quizAttempts } from './db/schema';
+import { employees, admins, clockIns, clockInCreators, sales, quizQuestions, quizAttempts, fanvueTips, tipDisputes, creators } from './db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 
 interface SessionData {
@@ -8,6 +8,8 @@ interface SessionData {
   saleCategory?: string;
   addingSales?: boolean;
   salesSession?: Array<{ category: string; amount: number }>;
+  awaitingDisputeSelection?: boolean;
+  disputeOptions?: Array<{ id: number; amount: number; timestamp: Date; creatorName?: string }>;
 }
 
 type MyContext = Context & SessionFlavor<SessionData>;
@@ -164,6 +166,10 @@ bot.command('clockout', async (ctx: MyContext) => {
       totalHours
     })
     .where(eq(clockIns.id, existingClockIn[0].id));
+
+  // Clean up clock-in creator associations
+  await db.delete(clockInCreators)
+    .where(eq(clockInCreators.clockInId, existingClockIn[0].id));
 
   await ctx.reply(
     `Clocked out successfully!\n` +
@@ -369,6 +375,88 @@ async function getEmployeeStats(employeeId: number, period: 'today' | 'week' | '
   };
 }
 
+bot.command('dispute_tip', async (ctx: MyContext) => {
+  const telegramId = ctx.from!.id.toString();
+  const employee = await getEmployeeByTelegramId(telegramId);
+
+  if (!employee) {
+    await ctx.reply('Please register first with /start');
+    return;
+  }
+
+  if (!ctx.message?.text) {
+    await ctx.reply('Please provide a tip amount to dispute. Usage: /dispute_tip <amount> [reason]');
+    return;
+  }
+
+  const args = ctx.message.text.split(' ').slice(1);
+  const tipAmount = args[0];
+  const reason = args.slice(1).join(' ') || 'No reason provided';
+
+  if (!tipAmount || isNaN(parseFloat(tipAmount))) {
+    await ctx.reply('Please provide a tip amount to dispute. Usage: /dispute_tip <amount> [reason]');
+    return;
+  }
+
+  // Find recent tips for this employee that match the amount
+  const recentTips = await db.select({
+    id: fanvueTips.id,
+    amount: fanvueTips.amount,
+    timestamp: fanvueTips.timestamp,
+    creatorName: creators.name,
+  })
+  .from(fanvueTips)
+  .innerJoin(creators, eq(fanvueTips.recipientUuid, creators.fanvueUuid))
+  .where(and(
+    eq(fanvueTips.assignedEmployeeId, employee.id),
+    eq(fanvueTips.amount, parseFloat(tipAmount)),
+    sql`${fanvueTips.timestamp} >= datetime('now', '-24 hours')`
+  ))
+  .orderBy(desc(fanvueTips.timestamp))
+  .limit(5);
+
+  if (recentTips.length === 0) {
+    await ctx.reply(`No recent tips of $${tipAmount} found assigned to you in the last 24 hours.`);
+    return;
+  }
+
+  if (recentTips.length === 1) {
+    // Only one tip matches, dispute it
+    const tip = recentTips[0];
+    await createDispute(tip.id, employee.id, reason);
+    await ctx.reply(`✅ Dispute submitted for $${tip.amount} tip from ${tip.creatorName || 'Unknown Creator'} at ${new Date(tip.timestamp).toLocaleString()}\n\nReason: ${reason}\n\nAn admin will review your dispute.`);
+  } else {
+    // Multiple tips match, ask user to be more specific
+    let message = `Found ${recentTips.length} tips of $${tipAmount}. Which one do you want to dispute?\n\n`;
+    recentTips.forEach((tip, index) => {
+      message += `${index + 1}. ${tip.creatorName || 'Unknown Creator'} - ${new Date(tip.timestamp).toLocaleString()}\n`;
+    });
+    message += '\nReply with the number (1, 2, 3, etc.) of the tip you want to dispute.';
+
+    // Store options in session for handling the response
+    ctx.session = {
+      ...ctx.session,
+      awaitingDisputeSelection: true,
+      disputeOptions: recentTips.map(tip => ({
+        id: tip.id,
+        amount: tip.amount,
+        timestamp: tip.timestamp,
+        creatorName: tip.creatorName
+      }))
+    };
+
+    await ctx.reply(message);
+  }
+});
+
+async function createDispute(tipId: number, employeeId: number, reason: string) {
+  await db.insert(tipDisputes).values({
+    tipId,
+    disputedBy: employeeId,
+    reason,
+  });
+}
+
 bot.command('admin', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
   const employee = await getEmployeeByTelegramId(telegramId);
@@ -387,6 +475,31 @@ bot.command('admin', async (ctx: MyContext) => {
       }]]
     }
   });
+});
+
+// Handle dispute selection
+bot.on('message:text', async (ctx: MyContext) => {
+  if (ctx.session?.awaitingDisputeSelection && ctx.message) {
+    const selection = parseInt(ctx.message.text!);
+    const options = ctx.session.disputeOptions || [];
+
+    if (isNaN(selection) || selection < 1 || selection > options.length) {
+      await ctx.reply(`Please reply with a number between 1 and ${options.length}.`);
+      return;
+    }
+
+    const selectedTip = options[selection - 1];
+    const employee = await getEmployeeByTelegramId(ctx.from!.id.toString());
+
+    if (employee) {
+      await createDispute(selectedTip.id, employee.id, 'Selected from multiple options');
+      await ctx.reply(`✅ Dispute submitted for $${selectedTip.amount} tip from ${selectedTip.creatorName || 'Unknown Creator'} at ${new Date(selectedTip.timestamp).toLocaleString()}\n\nAn admin will review your dispute.`);
+    }
+
+    // Clear session
+    ctx.session = { ...ctx.session, awaitingDisputeSelection: false, disputeOptions: undefined };
+    return;
+  }
 });
 
 // Handle sale amount input
