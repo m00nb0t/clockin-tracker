@@ -70,44 +70,35 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is admin (via Telegram WebApp)
-    if (window.Telegram?.WebApp) {
-      verifyAdminAccess();
+    // Check for admin password hash
+    const passwordHash = localStorage.getItem('admin_password_hash');
+    const correctHash = '8e141a729043fb8b3d060a9476fc1a891cd712a9c84756e28b0b5010de82e6de';
+
+    if (passwordHash === correctHash) {
+      fetchStats();
     } else {
-      // For development, check if we can verify admin status
-      verifyAdminAccess();
+      const enteredPassword = prompt('Enter admin password:');
+      if (enteredPassword) {
+        // Hash the entered password using Web Crypto API
+        crypto.subtle.digest('SHA-256', new TextEncoder().encode(enteredPassword))
+          .then(hashBuffer => {
+            const enteredHash = Array.from(new Uint8Array(hashBuffer))
+              .map(b => b.toString(16).padStart(2, '0'))
+              .join('');
+
+            if (enteredHash === correctHash) {
+              localStorage.setItem('admin_password_hash', enteredHash);
+              fetchStats();
+            } else {
+              alert('Incorrect password');
+              window.location.href = '/';
+            }
+          });
+      } else {
+        window.location.href = '/';
+      }
     }
   }, []);
-
-  const verifyAdminAccess = async () => {
-    try {
-      // Verify admin status via API
-      const response = await fetch('/api/admin/verify-auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-telegram-auth': window.Telegram?.WebApp?.initData || '',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.isAdmin) {
-          fetchStats();
-        } else {
-          alert('Admin access required');
-          window.Telegram?.WebApp?.close();
-        }
-      } else {
-        alert('Authentication failed. Admin access required.');
-        window.Telegram?.WebApp?.close();
-      }
-    } catch (error) {
-      console.error('Admin verification failed:', error);
-      alert('Failed to verify admin access');
-      window.Telegram?.WebApp?.close();
-    }
-  };
 
   const fetchStats = async () => {
     try {
