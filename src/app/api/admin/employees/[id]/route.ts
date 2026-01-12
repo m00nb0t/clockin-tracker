@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { employees, admins, clockIns, sales, quizAttempts } from '@/lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 // GET /api/admin/employees/[id] - Get single employee details
 export async function GET(
@@ -19,8 +19,7 @@ export async function GET(
         telegramId: employees.telegramId,
         role: employees.role,
         active: employees.active,
-        createdAt: employees.createdAt,
-        isAdmin: sql<boolean>`CASE WHEN ${admins.id} IS NOT NULL THEN true ELSE false END`
+        createdAt: employees.createdAt
       })
       .from(employees)
       .leftJoin(admins, eq(employees.id, admins.employeeId))
@@ -65,10 +64,7 @@ export async function PUT(
     const existing = await db
       .select()
       .from(employees)
-      .where(and(
-        eq(employees.telegramId, telegramId),
-        sql`${employees.id} != ${employeeId}`
-      ))
+      .where(eq(employees.telegramId, telegramId)) // Simplified check
       .limit(1);
 
     if (existing[0]) {

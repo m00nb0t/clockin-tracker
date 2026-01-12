@@ -42,7 +42,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         status,
         resolution: resolution.trim(),
         resolvedBy: resolverId,
-        resolvedAt: new Date(),
+        resolvedAt: new Date() as any, // Force type for now
       })
       .where(eq(tipDisputes.id, disputeId))
       .returning();

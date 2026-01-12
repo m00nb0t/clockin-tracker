@@ -42,14 +42,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }
 
-    // Verify webhook signature if secret is configured
-    if (process.env.FANVUE_WEBHOOK_SECRET) {
-      if (!verifyWebhookSignature(request, bodyText)) {
-        console.warn('Invalid webhook signature');
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-      }
-    } else {
-      console.warn('FANVUE_WEBHOOK_SECRET not configured - skipping signature verification');
+    // Verify webhook signature - required for security
+    if (!process.env.FANVUE_WEBHOOK_SECRET) {
+      console.error('FANVUE_WEBHOOK_SECRET not configured - webhook rejected');
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+    }
+
+    if (!verifyWebhookSignature(request, bodyText)) {
+      console.warn('Invalid webhook signature');
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
     const { recipientUuid, senderUuid, price, timestamp, context, currency } = body;

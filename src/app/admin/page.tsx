@@ -72,13 +72,42 @@ export default function AdminDashboard() {
   useEffect(() => {
     // Check if user is admin (via Telegram WebApp)
     if (window.Telegram?.WebApp) {
-      // In a real implementation, you'd verify admin status via API
-      fetchStats();
+      verifyAdminAccess();
     } else {
-      // For development, allow access
-      fetchStats();
+      // For development, check if we can verify admin status
+      verifyAdminAccess();
     }
   }, []);
+
+  const verifyAdminAccess = async () => {
+    try {
+      // Verify admin status via API
+      const response = await fetch('/api/admin/verify-auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-auth': window.Telegram?.WebApp?.initData || '',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.isAdmin) {
+          fetchStats();
+        } else {
+          alert('Admin access required');
+          window.Telegram?.WebApp?.close();
+        }
+      } else {
+        alert('Authentication failed. Admin access required.');
+        window.Telegram?.WebApp?.close();
+      }
+    } catch (error) {
+      console.error('Admin verification failed:', error);
+      alert('Failed to verify admin access');
+      window.Telegram?.WebApp?.close();
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -154,7 +183,7 @@ export default function AdminDashboard() {
       {/* Content */}
       <main className="p-6">
         <ErrorBoundary>
-          {activeTab === 'dashboard' && (
+        {activeTab === 'dashboard' && (
           <div className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

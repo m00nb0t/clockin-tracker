@@ -1,6 +1,6 @@
-import { Bot, Context, InlineKeyboard, session, SessionFlavor } from 'grammy';
+import { Bot, Context, session, SessionFlavor } from 'grammy';
 import { db } from './db';
-import { employees, admins, clockIns, clockInCreators, sales, quizQuestions, quizAttempts, fanvueTips, tipDisputes, creators } from './db/schema';
+import { employees, admins, clockIns, clockInCreators, sales, fanvueTips, tipDisputes, creators } from './db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 
 interface SessionData {
@@ -340,8 +340,7 @@ async function getEmployeeStats(employeeId: number, period: 'today' | 'week' | '
     .from(clockIns)
     .where(and(
       eq(clockIns.employeeId, employeeId),
-      sql`${clockIns.date} >= ${startDateStr}`,
-      sql`${clockIns.date} <= ${endDateStr}`
+      sql`${clockIns.date} >= ${startDateStr} AND ${clockIns.date} <= ${endDateStr}`
     ));
 
   // Get sales for period
@@ -349,8 +348,7 @@ async function getEmployeeStats(employeeId: number, period: 'today' | 'week' | '
     .from(sales)
     .where(and(
       eq(sales.employeeId, employeeId),
-      sql`${sales.date} >= ${startDateStr}`,
-      sql`${sales.date} <= ${endDateStr}`
+      sql`${sales.date} >= ${startDateStr} AND ${sales.date} <= ${endDateStr}`
     ));
 
   // Calculate totals

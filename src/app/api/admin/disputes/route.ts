@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { tipDisputes, fanvueTips, employees, creators } from '@/lib/db/schema';
+import { tipDisputes, fanvueTips, employees, creators, admins } from '@/lib/db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 
 // GET /api/admin/disputes - List all disputes
@@ -24,18 +24,18 @@ export async function GET(request: NextRequest) {
         tipAmount: fanvueTips.amount,
         tipTimestamp: fanvueTips.timestamp,
         creatorName: creators.name,
-        disputedByName: sql<string>`disputer.name`,
+        disputedByName: employees.name,
         reason: tipDisputes.reason,
         status: tipDisputes.status,
         createdAt: tipDisputes.createdAt,
-        resolvedByName: sql<string>`resolver.name`,
+        resolvedByName: admins.permissions, // This will be null for unresolved disputes
         resolution: tipDisputes.resolution,
       })
       .from(tipDisputes)
       .innerJoin(fanvueTips, eq(tipDisputes.tipId, fanvueTips.id))
       .innerJoin(creators, eq(fanvueTips.recipientUuid, creators.fanvueUuid))
-      .innerJoin(sql`employees as disputer`, eq(tipDisputes.disputedBy, sql`disputer.id`))
-      .leftJoin(sql`employees as resolver`, eq(tipDisputes.resolvedBy, sql`resolver.id`))
+      .innerJoin(employees, eq(tipDisputes.disputedBy, employees.id))
+      .leftJoin(admins, eq(tipDisputes.resolvedBy, admins.employeeId))
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
       .orderBy(desc(tipDisputes.createdAt))
       .limit(limit)

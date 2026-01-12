@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizSettings } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { desc } from 'drizzle-orm';
 
 // GET /api/admin/quiz/settings - Get current quiz settings
 export async function GET() {
@@ -47,20 +47,14 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update or insert settings
+    // Delete existing settings and insert new ones
+    await db.delete(quizSettings);
+
     const result = await db
       .insert(quizSettings)
       .values({
         startDate,
         timezone: timezone || 'Asia/Shanghai',
-      })
-      .onConflictDoUpdate({
-        target: quizSettings.id,
-        set: {
-          startDate,
-          timezone: timezone || 'Asia/Shanghai',
-          updatedAt: new Date(),
-        },
       })
       .returning();
 

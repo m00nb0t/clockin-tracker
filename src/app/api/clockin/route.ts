@@ -2,17 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { employees, clockIns, clockInCreators, creators } from '@/lib/db/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
+import { requireUser } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, creatorIds } = await request.json();
+    // Require user authentication
+    const authUser = await requireUser(request);
 
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
-    }
+    const { creatorIds } = await request.json();
 
-    // Get employee
-    const employeeResult = await db.select().from(employees).where(eq(employees.telegramId, userId)).limit(1);
+    // Get employee (should match authenticated user)
+    const employeeResult = await db.select().from(employees).where(eq(employees.id, authUser.id)).limit(1);
     const employee = employeeResult[0];
 
     if (!employee) {
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       .where(and(
         eq(clockIns.employeeId, employee.id),
         sql`${clockIns.clockOutTime} IS NULL`,
-        sql`date(${clockIns.date}) < date('${today}')`
+        sql`date(${clockIns.date}) < date(${today})`
       ))
       .orderBy(desc(clockIns.clockInTime))
       .limit(1);

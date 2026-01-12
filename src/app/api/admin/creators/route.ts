@@ -3,10 +3,13 @@ import { db } from '@/lib/db';
 import { creators } from '@/lib/db/schema';
 import { eq, desc, and, or, like, sql } from 'drizzle-orm';
 import { sanitizeString, sanitizeUUID } from '@/lib/sanitize';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/creators - List all creators with filtering
 export async function GET(request: NextRequest) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const platform = searchParams.get('platform');
@@ -66,14 +69,28 @@ export async function GET(request: NextRequest) {
 
 // POST /api/admin/creators - Create new creator or bulk import
 export async function POST(request: NextRequest) {
-  const url = new URL(request.url);
-  const isBulk = url.searchParams.get('bulk') === 'true';
+  try {
+    // Require admin authentication
+    await requireAdmin(request);
+
+    const url = new URL(request.url);
+    const isBulk = url.searchParams.get('bulk') === 'true';
 
   if (isBulk) {
     return handleBulkImport(request);
   }
 
-  return handleSingleCreate(request);
+    return handleSingleCreate(request);
+  } catch (error) {
+    console.error('Error in POST /api/admin/creators:', error);
+    if (error instanceof Error && error.message === 'Admin access required') {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+    if (error instanceof Error && error.message === 'Authentication required') {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }
 
 async function handleBulkImport(request: NextRequest) {

@@ -167,9 +167,11 @@ function ClockInContent() {
     try {
       const clockinResponse = await fetch('/api/clockin', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-auth': window.Telegram?.WebApp?.initData || '',
+        },
         body: JSON.stringify({
-          userId,
           creatorIds: selectedCreators
         }),
       });

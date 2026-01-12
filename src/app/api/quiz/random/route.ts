@@ -3,17 +3,6 @@ import { db } from '@/lib/db';
 import { quizQuestions, quizSettings } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
-function getCurrentDayInTimezone(timezone: string = 'Asia/Shanghai'): number {
-  // Get current date in the specified timezone
-  const now = new Date();
-  const timezoneOffset = timezone === 'Asia/Shanghai' ? 8 * 60 : 0; // GMT+8 in minutes
-
-  // Convert current time to target timezone
-  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const targetTime = new Date(utcTime + (timezoneOffset * 60000));
-
-  return targetTime.getDate();
-}
 
 function getDaysSinceStart(startDateStr: string, timezone: string = 'Asia/Shanghai'): number {
   const startDate = new Date(startDateStr + 'T00:00:00');
@@ -59,7 +48,7 @@ export async function GET() {
     }
 
     // Calculate which question should be active today
-    const questionIndex = (daysSinceStart - 1) % questions.length; // -1 because arrays are 0-indexed
+    const questionIndex = Math.max(0, (daysSinceStart - 1) % questions.length); // Ensure non-negative
     const todaysQuestion = questions[questionIndex];
 
     if (!todaysQuestion) {
