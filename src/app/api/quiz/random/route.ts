@@ -64,6 +64,7 @@ export async function GET() {
       optionC: todaysQuestion.optionC,
       optionD: todaysQuestion.optionD,
       correctAnswer: todaysQuestion.correctAnswer,
+      explanation: todaysQuestion.explanation,
       dayNumber: daysSinceStart,
       totalQuestions: questions.length,
     });

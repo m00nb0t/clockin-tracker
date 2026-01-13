@@ -26,13 +26,18 @@ export async function GET(request: NextRequest) {
       .where(eq(sales.date, today));
     const todaySales = todaySalesResult[0].total;
 
-    // Get this week's hours and sales
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of week (Sunday)
+    // Get this week's hours and sales (GMT+8)
+    // In GMT+8, we want to find the most recent Monday at midnight
+    const nowGmt8 = new Date(new Date().getTime() + (8 * 60 * 60 * 1000));
+    const dayOfWeek = nowGmt8.getUTCDay(); // 0 is Sunday, 1 is Monday...
+    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday(0), subtract 6 to get to last Monday
+    
+    const weekStart = new Date(nowGmt8);
+    weekStart.setUTCDate(nowGmt8.getUTCDate() - daysToSubtract);
     const weekStartStr = weekStart.toISOString().split('T')[0];
 
-    const weekEnd = new Date();
-    weekEnd.setDate(weekEnd.getDate() + (6 - weekEnd.getDay())); // End of week (Saturday)
+    const weekEnd = new Date(weekStart);
+    weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
     const weekEndStr = weekEnd.toISOString().split('T')[0];
 
     const weekHoursResult = await db.select({ total: sql<number>`coalesce(sum(${clockIns.totalHours}), 0)` })

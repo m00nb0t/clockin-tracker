@@ -303,7 +303,7 @@ function ClockInContent() {
 
                   {question?.explanation && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
-                      <h3 className="text-blue-800 font-medium mb-2">Why is this the correct answer?</h3>
+                      <h3 className="text-blue-800 font-medium mb-2">Explanation</h3>
                       <p className="text-blue-700 text-sm">{question.explanation}</p>
                     </div>
                   )}
@@ -318,16 +318,33 @@ function ClockInContent() {
               ) : (
                 <>
                   <div className="text-red-600 text-2xl mb-4">✗</div>
-                  <p className="text-red-700 font-medium mb-4">Wrong! Try again.</p>
-                  <p className="text-gray-600 mb-6">Please select the correct answer.</p>
+                  <p className="text-red-700 font-medium mb-4">Incorrect!</p>
+                  
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-left">
+                    <p className="text-red-800 font-semibold mb-2">
+                      The correct answer was: {question.correctAnswer}
+                    </p>
+                    <p className="text-red-700 text-sm italic mb-3">
+                      {question.correctAnswer === 'A' ? question.optionA : 
+                       question.correctAnswer === 'B' ? question.optionB : 
+                       question.correctAnswer === 'C' ? question.optionC : 
+                       question.optionD}
+                    </p>
+                    
+                    {question?.explanation && (
+                      <>
+                        <div className="h-px bg-red-200 my-3"></div>
+                        <h3 className="text-red-800 font-medium mb-1 text-sm">Explanation:</h3>
+                        <p className="text-red-700 text-sm">{question.explanation}</p>
+                      </>
+                    )}
+                  </div>
+
                   <button
-                    onClick={() => {
-                      setShowResult(false);
-                      setSelectedAnswer('');
-                    }}
-                    className="w-full bg-gray-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-700"
+                    onClick={handleQuizSuccess}
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700"
                   >
-                    Try Again
+                    I Understand, Continue
                   </button>
                 </>
               )}

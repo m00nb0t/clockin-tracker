@@ -6,8 +6,9 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 interface SessionData {
   awaitingName?: boolean;
   saleCategory?: string;
+  selectedCreatorId?: number;
   addingSales?: boolean;
-  salesSession?: Array<{ category: string; amount: number }>;
+  salesSession?: Array<{ category: string; amount: number; creatorId?: number }>;
   awaitingDisputeSelection?: boolean;
   disputeOptions?: Array<{ id: number; amount: number; timestamp: Date; creatorName?: string }>;
 }
@@ -29,7 +30,9 @@ async function getEmployeeByTelegramId(telegramId: string) {
 
 
 function formatDate(date: Date): string {
-  return date.toISOString().split('T')[0];
+  // Return YYYY-MM-DD in GMT+8
+  const gmt8Date = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+  return gmt8Date.toISOString().split('T')[0];
 }
 
 function calculateHours(clockInTime: Date, clockOutTime?: Date): number | null {
@@ -179,17 +182,61 @@ bot.command('addsale', async (ctx: MyContext) => {
     return;
   }
 
+  // Check if clocked in
+  const today = formatDate(new Date());
+  const activeClockIn = await db.select()
+    .from(clockIns)
+    .where(and(
+      eq(clockIns.employeeId, employee.id),
+      eq(clockIns.date, today),
+      sql`${clockIns.clockOutTime} IS NULL`
+    ))
+    .limit(1);
+
+  if (!activeClockIn[0]) {
+    await ctx.reply('⚠️ You must be clocked in to add sales. Use /clockin first.');
+    return;
+  }
+
+  // Get creators for this clock-in
+  const assignedCreators = await db.select({
+    id: creators.id,
+    name: creators.name
+  })
+  .from(clockInCreators)
+  .innerJoin(creators, eq(clockInCreators.creatorId, creators.id))
+  .where(eq(clockInCreators.clockInId, activeClockIn[0].id));
+
+  if (assignedCreators.length === 0) {
+    await ctx.reply('⚠️ No creators linked to your current shift. Please clock out and clock in again, selecting the creators you are working on.');
+    return;
+  }
+
   ctx.session = { addingSales: true, salesSession: [] };
-  await ctx.reply('Choose category:', {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          { text: 'Tip', callback_data: 'sale_category_tip' },
-          { text: 'PPV', callback_data: 'sale_category_ppv' }
+
+  if (assignedCreators.length === 1) {
+    ctx.session.selectedCreatorId = assignedCreators[0].id;
+    await ctx.reply(`Adding sale for **${assignedCreators[0].name}**. Choose category:`, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: 'Tip', callback_data: 'sale_category_tip' },
+            { text: 'PPV', callback_data: 'sale_category_ppv' }
+          ]
         ]
-      ]
-    }
-  });
+      }
+    });
+  } else {
+    const keyboard = assignedCreators.map(c => ([{
+      text: c.name,
+      callback_data: `sale_creator_${c.id}`
+    }]));
+    
+    await ctx.reply('Which creator is this sale for?', {
+      reply_markup: { inline_keyboard: keyboard }
+    });
+  }
 });
 
 bot.on('callback_query', async (ctx: MyContext) => {
@@ -242,14 +289,16 @@ bot.on('callback_query', async (ctx: MyContext) => {
     return;
   }
 
-  if (callbackData.startsWith('sale_category_')) {
-    const category = callbackData.replace('sale_category_', '');
-    ctx.session = { ...ctx.session, saleCategory: category };
-    await ctx.editMessageText('Enter amount ($):');
-    await ctx.answerCallbackQuery();
-  } else if (callbackData === 'add_another_sale') {
-    ctx.session = { ...ctx.session, addingSales: true };
-    await ctx.editMessageText('Choose category:', {
+  if (callbackData.startsWith('sale_creator_')) {
+    const creatorId = parseInt(callbackData.replace('sale_creator_', ''));
+    ctx.session = { ...ctx.session, selectedCreatorId: creatorId };
+    
+    // Get creator name for display
+    const creatorResult = await db.select().from(creators).where(eq(creators.id, creatorId)).limit(1);
+    const creatorName = creatorResult[0]?.name || 'Creator';
+
+    await ctx.editMessageText(`Adding sale for **${creatorName}**. Choose category:`, {
+      parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
           [
@@ -259,6 +308,59 @@ bot.on('callback_query', async (ctx: MyContext) => {
         ]
       }
     });
+    await ctx.answerCallbackQuery();
+    return;
+  }
+
+  if (callbackData.startsWith('sale_category_')) {
+    const category = callbackData.replace('sale_category_', '');
+    ctx.session = { ...ctx.session, saleCategory: category };
+    await ctx.editMessageText('Enter amount ($):');
+    await ctx.answerCallbackQuery();
+  } else if (callbackData === 'add_another_sale') {
+    const telegramId = ctx.from!.id.toString();
+    const employee = await getEmployeeByTelegramId(telegramId);
+    
+    const activeClockIn = await db.select()
+      .from(clockIns)
+      .where(and(
+        eq(clockIns.employeeId, employee!.id),
+        sql`${clockIns.clockOutTime} IS NULL`
+      ))
+      .limit(1);
+
+    const assignedCreators = await db.select({
+      id: creators.id,
+      name: creators.name
+    })
+    .from(clockInCreators)
+    .innerJoin(creators, eq(clockInCreators.creatorId, creators.id))
+    .where(eq(clockInCreators.clockInId, activeClockIn[0].id));
+
+    if (assignedCreators.length === 1) {
+      ctx.session = { ...ctx.session, addingSales: true, selectedCreatorId: assignedCreators[0].id };
+      await ctx.editMessageText(`Adding another sale for **${assignedCreators[0].name}**. Choose category:`, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: 'Tip', callback_data: 'sale_category_tip' },
+              { text: 'PPV', callback_data: 'sale_category_ppv' }
+            ]
+          ]
+        }
+      });
+    } else {
+      ctx.session = { ...ctx.session, addingSales: true, selectedCreatorId: undefined };
+      const keyboard = assignedCreators.map(c => ([{
+        text: c.name,
+        callback_data: `sale_creator_${c.id}`
+      }]));
+      
+      await ctx.editMessageText('Which creator is this sale for?', {
+        reply_markup: { inline_keyboard: keyboard }
+      });
+    }
     await ctx.answerCallbackQuery();
   } else if (callbackData === 'finish_sales') {
     const session = ctx.session?.salesSession || [];
@@ -299,33 +401,39 @@ bot.command('status', async (ctx: MyContext) => {
 
 async function getEmployeeStats(employeeId: number, period: 'today' | 'week' | 'month' | 'biweekly') {
   const now = new Date();
+  const nowGmt8 = new Date(now.getTime() + (8 * 60 * 60 * 1000));
   let startDate: Date;
-  let endDate: Date = now;
+  let endDate: Date = nowGmt8;
   let periodLabel: string;
 
   switch (period) {
     case 'today':
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      startDate = nowGmt8;
       periodLabel = `Today (${formatDate(now)})`;
       break;
     case 'week':
-      startDate = new Date(now);
-      startDate.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
-      periodLabel = 'This Week';
+      const dayOfWeek = nowGmt8.getUTCDay();
+      const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      startDate = new Date(nowGmt8);
+      startDate.setUTCDate(nowGmt8.getUTCDate() - daysToSubtract);
+      periodLabel = 'This Week (Mon-Sun)';
       break;
     case 'biweekly':
-      startDate = new Date(now);
-      startDate.setDate(now.getDate() - 13); // Last 14 days
+      startDate = new Date(nowGmt8);
+      startDate.setUTCDate(nowGmt8.getUTCDate() - 13);
       periodLabel = 'Last 2 Weeks';
       break;
     case 'month':
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      startDate = new Date(nowGmt8.getUTCFullYear(), nowGmt8.getUTCMonth(), 1);
       periodLabel = 'This Month';
       break;
+    default:
+      startDate = nowGmt8;
+      periodLabel = 'Today';
   }
 
-  const startDateStr = formatDate(startDate);
-  const endDateStr = formatDate(endDate);
+  const startDateStr = startDate.toISOString().split('T')[0];
+  const endDateStr = endDate.toISOString().split('T')[0];
 
   // Get clock-ins for period
   const clockInsData = await db.select()
@@ -487,6 +595,7 @@ bot.on('message:text', async (ctx: MyContext) => {
     const telegramId = ctx.from!.id.toString();
     const employee = await getEmployeeByTelegramId(telegramId);
     const category = ctx.session.saleCategory;
+    const creatorId = ctx.session.selectedCreatorId;
     const today = formatDate(new Date());
 
     // Save sale
@@ -495,11 +604,13 @@ bot.on('message:text', async (ctx: MyContext) => {
       category,
       amount,
       date: today,
+      creatorId: creatorId,
+      source: 'manual',
     });
 
     // Update session
     const session = ctx.session.salesSession || [];
-    session.push({ category, amount });
+    session.push({ category, amount, creatorId });
     ctx.session.salesSession = session;
 
     const categoryDisplay = category === 'tip' ? 'Tip' : 'PPV';

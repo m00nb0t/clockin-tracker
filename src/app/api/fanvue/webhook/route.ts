@@ -150,6 +150,21 @@ export async function POST(request: NextRequest) {
           });
         });
 
+        // Notify employee via Telegram
+        try {
+          if (activeEmployee.telegramId) {
+            await bot.api.sendMessage(
+              activeEmployee.telegramId,
+              `💰 **New Fanvue Tip!**\n\n` +
+              `Amount: **$${tipAmount.toFixed(2)}**\n` +
+              `Creator: ${creator.name}\n` +
+              `Time: ${new Date(timestamp).toLocaleString()}`
+            );
+          }
+        } catch (botError) {
+          console.error('Failed to notify employee via bot:', botError);
+        }
+
         return NextResponse.json({
           success: true,
           assigned: true,
@@ -225,6 +240,7 @@ async function findEmployeeForCreatorAtTime(creatorId: number, tipTime: Date) {
   const result = await db.select({
     employeeId: clockIns.employeeId,
     employeeName: employees.name,
+    telegramId: employees.telegramId,
   })
   .from(clockInCreators)
   .innerJoin(clockIns, eq(clockInCreators.clockInId, clockIns.id))

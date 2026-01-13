@@ -107,7 +107,7 @@ export default function AdminDashboard() {
               if (data.token) {
                 localStorage.setItem('admin_token', data.token);
                 setAdminToken(data.token);
-                fetchStats();
+                fetchStats(data.token);
               } else {
                 alert('Login failed');
                 window.location.href = '/';
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
     .then(response => {
       if (response.ok) {
         setAdminToken(token);
-        fetchStats();
+        fetchStats(token);
       } else {
         // Token invalid, clear it and prompt login
         localStorage.removeItem('admin_token');
@@ -148,13 +148,17 @@ export default function AdminDashboard() {
     });
   };
 
-  const fetchStats = async () => {
-    if (!adminToken) return;
+  const fetchStats = async (token?: string) => {
+    const currentToken = token || adminToken;
+    if (!currentToken) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch('/api/admin/stats', {
         headers: {
-          'Authorization': `Bearer ${adminToken}`
+          'Authorization': `Bearer ${currentToken}`
         }
       });
       if (response.ok) {

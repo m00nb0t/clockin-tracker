@@ -7,6 +7,8 @@ import { requireAdminDashboard } from '@/lib/auth';
 // GET /api/admin/disputes - List all disputes
 export async function GET(request: NextRequest) {
   try {
+    // Require admin authentication
+    requireAdminDashboard(request);
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const limit = parseInt(searchParams.get('limit') || '50');
