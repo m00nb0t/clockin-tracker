@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { employees, admins, clockIns, sales, quizAttempts } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/employees/[id] - Get single employee details
 export async function GET(
@@ -9,6 +10,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const { id } = await params;
     const employeeId = parseInt(id);
 
@@ -49,6 +52,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const { id } = await params;
     const employeeId = parseInt(id);
     const { name, telegramId, role, active } = await request.json();
@@ -109,6 +114,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const { id } = await params;
     const employeeId = parseInt(id);
 

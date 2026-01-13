@@ -2,23 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizAttempts, employees } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { requireUser, requireAdmin } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, questionId, selectedAnswer, correct, attemptNumber } = await request.json();
+    // Require user authentication
+    const authUser = await requireUser(request);
 
-    if (!userId || !questionId || !selectedAnswer) {
+    const { questionId, selectedAnswer, correct, attemptNumber } = await request.json();
+
+    if (!questionId || !selectedAnswer) {
       return NextResponse.json(
-        { error: 'User ID, question ID, and selected answer are required' },
+        { error: 'Question ID and selected answer are required' },
         { status: 400 }
       );
     }
 
-    // Get employee
+    // Use authenticated user
     const employeeResult = await db
       .select()
       .from(employees)
-      .where(eq(employees.telegramId, userId))
+      .where(eq(employees.id, authUser.id))
       .limit(1);
 
     if (!employeeResult[0]) {
@@ -64,6 +68,8 @@ export async function POST(request: NextRequest) {
 // GET /api/quiz/attempt?employeeId=X&questionId=Y - Get attempts for analytics
 export async function GET(request: NextRequest) {
   try {
+    // Require admin authentication for viewing analytics
+    await requireAdmin(request);
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employeeId');
     const questionId = searchParams.get('questionId');

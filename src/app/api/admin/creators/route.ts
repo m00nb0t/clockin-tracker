@@ -73,14 +73,14 @@ export async function POST(request: NextRequest) {
     // Require admin authentication
     await requireAdmin(request);
 
-    const url = new URL(request.url);
-    const isBulk = url.searchParams.get('bulk') === 'true';
+  const url = new URL(request.url);
+  const isBulk = url.searchParams.get('bulk') === 'true';
 
   if (isBulk) {
     return handleBulkImport(request);
   }
 
-    return handleSingleCreate(request);
+  return handleSingleCreate(request);
   } catch (error) {
     console.error('Error in POST /api/admin/creators:', error);
     if (error instanceof Error && error.message === 'Admin access required') {

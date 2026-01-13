@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { tipDisputes } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { requireAdmin } from '@/lib/auth';
 
 // PUT /api/admin/disputes/[id] - Resolve a dispute
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
+
     const { id } = await params;
     const disputeId = parseInt(id);
 

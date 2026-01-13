@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { employees, admins } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/employees - List all employees with admin status
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const employeeList = await db
       .select({
         id: employees.id,
@@ -33,6 +36,9 @@ export async function GET() {
 // POST /api/admin/employees - Create new employee
 export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
+
     const { name, telegramId } = await request.json();
 
     if (!name || !telegramId) {

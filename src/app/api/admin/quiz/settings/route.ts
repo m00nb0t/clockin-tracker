@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizSettings } from '@/lib/db/schema';
 import { desc } from 'drizzle-orm';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/quiz/settings - Get current quiz settings
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const settings = await db
       .select()
       .from(quizSettings)
@@ -38,6 +41,9 @@ export async function GET() {
 // PUT /api/admin/quiz/settings - Update quiz settings
 export async function PUT(request: NextRequest) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
+
     const { startDate, timezone } = await request.json();
 
     if (!startDate) {

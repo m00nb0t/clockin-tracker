@@ -1,9 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizQuestions } from '@/lib/db/schema';
+import { requireAdmin } from '@/lib/auth';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const questions = [
       {
         sequenceNumber: 1,

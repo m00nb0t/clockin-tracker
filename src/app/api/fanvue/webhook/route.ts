@@ -48,9 +48,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
     }
 
-    if (!verifyWebhookSignature(request, bodyText)) {
-      console.warn('Invalid webhook signature');
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      if (!verifyWebhookSignature(request, bodyText)) {
+        console.warn('Invalid webhook signature');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
     const { recipientUuid, senderUuid, price, timestamp, context, currency } = body;

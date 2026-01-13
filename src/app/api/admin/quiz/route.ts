@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizQuestions } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/quiz - List all quiz questions
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
+
     const questions = await db
       .select()
       .from(quizQuestions)
@@ -24,6 +28,9 @@ export async function GET() {
 // POST /api/admin/quiz - Create new quiz question
 export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
+
     const { sequenceNumber, question, optionA, optionB, optionC, optionD, correctAnswer, explanation } = await request.json();
 
     if (!sequenceNumber || !question || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {

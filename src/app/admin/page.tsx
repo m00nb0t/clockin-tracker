@@ -88,7 +88,7 @@ export default function AdminDashboard() {
 
             if (enteredHash === correctHash) {
               localStorage.setItem('admin_password_hash', enteredHash);
-              fetchStats();
+      fetchStats();
             } else {
               alert('Incorrect password');
               window.location.href = '/';

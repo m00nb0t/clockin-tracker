@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { clockIns } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { requireAdmin } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
+
     const { clockInId, clockOutTime } = await request.json();
 
     if (!clockInId || !clockOutTime) {

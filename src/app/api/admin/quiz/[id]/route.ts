@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizQuestions, quizAttempts } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/quiz/[id] - Get single quiz question
 export async function GET(
@@ -9,6 +10,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const { id } = await params;
     const questionId = parseInt(id);
 
@@ -41,6 +44,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const { id } = await params;
     const questionId = parseInt(id);
     const { sequenceNumber, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, active } = await request.json();
@@ -116,6 +121,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const { id } = await params;
     const questionId = parseInt(id);
 

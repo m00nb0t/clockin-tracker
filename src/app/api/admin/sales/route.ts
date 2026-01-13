@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { sales, employees, creators } from '@/lib/db/schema';
 import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/sales - List all sales with filtering
 export async function GET(request: NextRequest) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employeeId');
     const category = searchParams.get('category');
@@ -85,6 +88,9 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/sales - Create new sales entry
 export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
+
     const { employeeId, category, amount, date, description } = await request.json();
 
     if (!employeeId || !category || !amount || !date) {

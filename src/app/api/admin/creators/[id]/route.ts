@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { creators, clockInCreators } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/creators/[id] - Get single creator
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const { id } = await params;
     const creatorId = parseInt(id);
 
@@ -41,6 +44,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 // PUT /api/admin/creators/[id] - Update creator
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const { id } = await params;
     const creatorId = parseInt(id);
 
@@ -125,6 +130,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 // DELETE /api/admin/creators/[id] - Deactivate creator (soft delete)
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     const { id } = await params;
     const creatorId = parseInt(id);
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/auth';
 
 interface FanvueCreator {
   uuid: string;
@@ -23,6 +24,8 @@ interface FanvueApiResponse {
 // GET /api/admin/fanvue-creators - Fetch creators from Fanvue API
 export async function GET(request: NextRequest) {
   try {
+    // Require admin authentication
+    await requireAdmin(request);
     // Get Fanvue API credentials from environment variables
     const clientId = process.env.FANVUE_CLIENT_ID;
     const clientSecret = process.env.FANVUE_CLIENT_SECRET;
