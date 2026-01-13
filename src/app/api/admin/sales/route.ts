@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { sales, employees, creators } from '@/lib/db/schema';
 import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdminDashboard } from '@/lib/auth';
 
 // GET /api/admin/sales - List all sales with filtering
 export async function GET(request: NextRequest) {
   try {
     // Require admin authentication
-    await requireAdmin(request);
+    requireAdminDashboard(request);
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employeeId');
     const category = searchParams.get('category');
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Require admin authentication
-    await requireAdmin(request);
+    requireAdminDashboard(request);
 
     const { employeeId, category, amount, date, description } = await request.json();
 

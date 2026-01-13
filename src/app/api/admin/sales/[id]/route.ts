@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { sales, employees } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdminDashboard } from '@/lib/auth';
 
 // GET /api/admin/sales/[id] - Get single sales entry
 export async function GET(
@@ -11,7 +11,7 @@ export async function GET(
 ) {
   try {
     // Require admin authentication
-    await requireAdmin(request);
+    requireAdminDashboard(request);
     const { id } = await params;
     const salesId = parseInt(id);
 
@@ -55,7 +55,7 @@ export async function PUT(
 ) {
   try {
     // Require admin authentication
-    await requireAdmin(request);
+    requireAdminDashboard(request);
     const { id } = await params;
     const salesId = parseInt(id);
     const { employeeId, category, amount, date, description } = await request.json();
@@ -135,7 +135,7 @@ export async function DELETE(
 ) {
   try {
     // Require admin authentication
-    await requireAdmin(request);
+    requireAdminDashboard(request);
     const { id } = await params;
     const salesId = parseInt(id);
 

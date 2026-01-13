@@ -3,13 +3,13 @@ import { db } from '@/lib/db';
 import { creators } from '@/lib/db/schema';
 import { eq, desc, and, or, like, sql } from 'drizzle-orm';
 import { sanitizeString, sanitizeUUID } from '@/lib/sanitize';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdminDashboard } from '@/lib/auth';
 
 // GET /api/admin/creators - List all creators with filtering
 export async function GET(request: NextRequest) {
   try {
     // Require admin authentication
-    await requireAdmin(request);
+    requireAdminDashboard(request);
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const platform = searchParams.get('platform');
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Require admin authentication
-    await requireAdmin(request);
+    requireAdminDashboard(request);
 
   const url = new URL(request.url);
   const isBulk = url.searchParams.get('bulk') === 'true';

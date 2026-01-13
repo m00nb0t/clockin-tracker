@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { tipDisputes, fanvueTips, employees, creators, admins } from '@/lib/db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdminDashboard } from '@/lib/auth';
 
 // GET /api/admin/disputes - List all disputes
 export async function GET(request: NextRequest) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizAttempts, employees } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { requireUser, requireAdmin } from '@/lib/auth';
+import { requireUser, requireAdminDashboard } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Require admin authentication for viewing analytics
-    await requireAdmin(request);
+    requireAdminDashboard(request);
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employeeId');
     const questionId = searchParams.get('questionId');

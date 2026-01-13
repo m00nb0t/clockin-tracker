@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdminDashboard } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
     // Require admin authentication
-    await requireAdmin(request);
+    requireAdminDashboard(request);
     // Use Drizzle's built-in migration system instead of raw SQL
     return NextResponse.json({
       success: false,

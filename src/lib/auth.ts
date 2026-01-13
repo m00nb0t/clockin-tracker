@@ -113,3 +113,49 @@ export async function requireUser(request: Request): Promise<AuthUser> {
   }
   return user;
 }
+
+// JWT-based admin authentication for admin dashboard
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'admin-jwt-secret-key-change-in-production';
+
+export interface AdminAuth {
+  isAdmin: true;
+  iat: number;
+  exp: number;
+}
+
+// Generate admin JWT token
+export function generateAdminToken(): string {
+  return jwt.sign({ isAdmin: true }, JWT_SECRET, { expiresIn: '24h' });
+}
+
+// Verify admin JWT token
+export function verifyAdminToken(token: string): AdminAuth | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as AdminAuth;
+    if (decoded.isAdmin) {
+      return decoded;
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Require admin authentication (JWT-based for admin dashboard)
+export function requireAdminDashboard(request: Request): AdminAuth {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new Error('Admin authentication required');
+  }
+
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  const adminAuth = verifyAdminToken(token);
+
+  if (!adminAuth) {
+    throw new Error('Invalid admin token');
+  }
+
+  return adminAuth;
+}

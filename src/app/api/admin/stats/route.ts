@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { employees, clockIns, sales } from '@/lib/db/schema';
 import { eq, sql, and, gte, lte } from 'drizzle-orm';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdminDashboard } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
     // Require admin authentication
-    await requireAdmin(request);
+    requireAdminDashboard(request);
 
     // Get total employees
     const totalEmployeesResult = await db.select({ count: sql<number>`count(*)` }).from(employees);

@@ -1,6 +1,6 @@
 import { Bot, Context, session, SessionFlavor } from 'grammy';
 import { db } from './db';
-import { employees, admins, clockIns, clockInCreators, sales, fanvueTips, tipDisputes, creators } from './db/schema';
+import { employees, clockIns, clockInCreators, sales, fanvueTips, tipDisputes, creators } from './db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 
 interface SessionData {
@@ -27,10 +27,6 @@ async function getEmployeeByTelegramId(telegramId: string) {
   return result[0] || null;
 }
 
-async function isAdmin(employeeId: number) {
-  const result = await db.select().from(admins).where(eq(admins.employeeId, employeeId)).limit(1);
-  return !!result[0];
-}
 
 function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
@@ -51,17 +47,13 @@ bot.command('start', async (ctx: MyContext) => {
     await ctx.reply('Welcome! Please enter your full name to register:');
     ctx.session = { awaitingName: true };
   } else {
-    const adminStatus = await isAdmin(employee.id);
-    const roleText = adminStatus ? ' (Admin)' : '';
-
     await ctx.reply(
-      `Welcome back, ${employee.name}${roleText}!\n\n` +
+      `Welcome back, ${employee.name}!\n\n` +
       `Commands:\n` +
       `/clockin - Clock in (with quiz)\n` +
       `/clockout - Clock out\n` +
       `/addsale - Add sales\n` +
-      `/status - View today's status\n` +
-      (adminStatus ? `/admin - Admin dashboard\n` : '')
+      `/status - View today's status`
     );
   }
 });
@@ -455,25 +447,6 @@ async function createDispute(tipId: number, employeeId: number, reason: string) 
   });
 }
 
-bot.command('admin', async (ctx: MyContext) => {
-  const telegramId = ctx.from!.id.toString();
-  const employee = await getEmployeeByTelegramId(telegramId);
-
-  if (!employee || !(await isAdmin(employee.id))) {
-    await ctx.reply('Admin access required.');
-    return;
-  }
-
-  const adminUrl = `${process.env.NEXT_PUBLIC_APP_URL}/admin`;
-  await ctx.reply('Admin Dashboard:', {
-    reply_markup: {
-      inline_keyboard: [[{
-        text: 'Open Admin Panel',
-        web_app: { url: adminUrl }
-      }]]
-    }
-  });
-});
 
 // Handle dispute selection
 bot.on('message:text', async (ctx: MyContext) => {

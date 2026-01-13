@@ -69,40 +69,94 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [adminToken, setAdminToken] = useState<string | null>(null);
+
   useEffect(() => {
-    // Check for admin password hash
-    const passwordHash = localStorage.getItem('admin_password_hash');
-    const correctHash = '8e141a729043fb8b3d060a9476fc1a891cd712a9c84756e28b0b5010de82e6de';
-
-    if (passwordHash === correctHash) {
-      fetchStats();
+    // Check for stored admin token
+    const storedToken = localStorage.getItem('admin_token');
+    if (storedToken) {
+      // Verify token is still valid by making a test API call
+      verifyAdminToken(storedToken);
     } else {
-      const enteredPassword = prompt('Enter admin password:');
-      if (enteredPassword) {
-        // Hash the entered password using Web Crypto API
-        crypto.subtle.digest('SHA-256', new TextEncoder().encode(enteredPassword))
-          .then(hashBuffer => {
-            const enteredHash = Array.from(new Uint8Array(hashBuffer))
-              .map(b => b.toString(16).padStart(2, '0'))
-              .join('');
-
-            if (enteredHash === correctHash) {
-              localStorage.setItem('admin_password_hash', enteredHash);
-      fetchStats();
-            } else {
-              alert('Incorrect password');
-              window.location.href = '/';
-            }
-          });
-      } else {
-        window.location.href = '/';
-      }
+      // No token, prompt for password
+      promptAdminLogin();
     }
   }, []);
 
+  const promptAdminLogin = () => {
+    const enteredPassword = prompt('Enter admin password:');
+    if (enteredPassword) {
+      // Hash the entered password using Web Crypto API
+      crypto.subtle.digest('SHA-256', new TextEncoder().encode(enteredPassword))
+        .then(hashBuffer => {
+          const enteredHash = Array.from(new Uint8Array(hashBuffer))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+
+          const correctHash = '8e141a729043fb8b3d060a9476fc1a891cd712a9c84756e28b0b5010de82e6de';
+
+          if (enteredHash === correctHash) {
+            // Password correct, get admin token from API
+            fetch('/api/admin/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ password: enteredPassword })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.token) {
+                localStorage.setItem('admin_token', data.token);
+                setAdminToken(data.token);
+                fetchStats();
+              } else {
+                alert('Login failed');
+                window.location.href = '/';
+              }
+            })
+            .catch(error => {
+              console.error('Login error:', error);
+              alert('Login failed');
+              window.location.href = '/';
+            });
+          } else {
+            alert('Incorrect password');
+            window.location.href = '/';
+          }
+        });
+    } else {
+      window.location.href = '/';
+    }
+  };
+
+  const verifyAdminToken = (token: string) => {
+    fetch('/api/admin/verify-token', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => {
+      if (response.ok) {
+        setAdminToken(token);
+        fetchStats();
+      } else {
+        // Token invalid, clear it and prompt login
+        localStorage.removeItem('admin_token');
+        promptAdminLogin();
+      }
+    })
+    .catch(() => {
+      localStorage.removeItem('admin_token');
+      promptAdminLogin();
+    });
+  };
+
   const fetchStats = async () => {
+    if (!adminToken) return;
+
     try {
-      const response = await fetch('/api/admin/stats');
+      const response = await fetch('/api/admin/stats', {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         setStats(data);
