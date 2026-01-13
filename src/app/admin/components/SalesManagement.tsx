@@ -39,7 +39,7 @@ interface SalesFilters {
   endDate: string;
 }
 
-export default function SalesManagement() {
+export default function SalesManagement({ token }: { token: string }) {
   const [sales, setSales] = useState<SalesEntry[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,11 +65,13 @@ export default function SalesManagement() {
   useEffect(() => {
     fetchEmployees();
     fetchSales();
-  }, [filters]);
+  }, [filters, token]);
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/admin/employees');
+      const response = await fetch('/api/admin/employees', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         setEmployees(data.filter((emp: Employee) => emp.active));
@@ -88,7 +90,9 @@ export default function SalesManagement() {
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
 
-      const response = await fetch(`/api/admin/sales?${params}`);
+      const response = await fetch(`/api/admin/sales?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         setSales(data.sales);
@@ -113,7 +117,10 @@ export default function SalesManagement() {
 
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           ...formData,
           amount: parseFloat(formData.amount),
@@ -153,6 +160,7 @@ export default function SalesManagement() {
     try {
       const response = await fetch(`/api/admin/sales/${sale.id}`, {
         method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {

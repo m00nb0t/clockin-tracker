@@ -7,6 +7,8 @@ import QuizManagement from './components/QuizManagement';
 import SalesManagement from './components/SalesManagement';
 import CreatorManagement from './components/CreatorManagement';
 import DisputeManagement from './components/DisputeManagement';
+import ClockTimeManagement from './components/ClockTimeManagement';
+import QuizResponses from './components/QuizResponses';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Telegram WebApp type declarations
@@ -176,11 +178,11 @@ export default function AdminDashboard() {
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'employees', label: 'Employees' },
     { id: 'creators', label: 'Creators' },
-    { id: 'disputes', label: 'Tip Disputes' },
-    { id: 'clock-times', label: 'Clock Times' },
+    { id: 'clock-times', label: 'Shifts' },
     { id: 'sales', label: 'Sales' },
-    { id: 'quiz', label: 'Quiz Questions' },
-    { id: 'reports', label: 'Reports' },
+    { id: 'quiz', label: 'Quiz Setup' },
+    { id: 'quiz-results', label: 'Quiz Results' },
+    { id: 'disputes', label: 'Tip Disputes' },
   ];
 
   if (loading) {
@@ -313,26 +315,19 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {activeTab === 'employees' && <EmployeeManagement />}
+        {activeTab === 'employees' && <EmployeeManagement token={adminToken!} />}
 
-        {activeTab === 'creators' && <CreatorManagement />}
+        {activeTab === 'creators' && <CreatorManagement token={adminToken!} />}
 
-        {activeTab === 'disputes' && <DisputeManagement />}
+        {activeTab === 'disputes' && <DisputeManagement token={adminToken!} />}
 
-        {activeTab === 'clock-times' && (
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Clock Times</h3>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-500 text-center py-8">Clock time management interface coming soon...</p>
-            </div>
-          </div>
-        )}
+        {activeTab === 'clock-times' && <ClockTimeManagement token={adminToken!} />}
 
-        {activeTab === 'sales' && <SalesManagement />}
+        {activeTab === 'sales' && <SalesManagement token={adminToken!} />}
 
-        {activeTab === 'quiz' && <QuizManagement />}
+        {activeTab === 'quiz' && <QuizManagement token={adminToken!} />}
+
+        {activeTab === 'quiz-results' && <QuizResponses token={adminToken!} />}
 
         {activeTab === 'reports' && (
           <div className="bg-white rounded-lg shadow-sm">

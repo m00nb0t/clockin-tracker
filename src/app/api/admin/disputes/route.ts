@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
       whereConditions.push(eq(tipDisputes.status, status));
     }
 
+    const resolverAlias = sql`resolver_employees`;
     const disputesList = await db
       .select({
         id: tipDisputes.id,
@@ -31,14 +32,13 @@ export async function GET(request: NextRequest) {
         reason: tipDisputes.reason,
         status: tipDisputes.status,
         createdAt: tipDisputes.createdAt,
-        resolvedByName: admins.permissions, // This will be null for unresolved disputes
+        resolvedByName: sql<string>`(SELECT name FROM employees WHERE id = ${tipDisputes.resolvedBy})`,
         resolution: tipDisputes.resolution,
       })
       .from(tipDisputes)
       .innerJoin(fanvueTips, eq(tipDisputes.tipId, fanvueTips.id))
       .innerJoin(creators, eq(fanvueTips.recipientUuid, creators.fanvueUuid))
       .innerJoin(employees, eq(tipDisputes.disputedBy, employees.id))
-      .leftJoin(admins, eq(tipDisputes.resolvedBy, admins.employeeId))
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
       .orderBy(desc(tipDisputes.createdAt))
       .limit(limit)

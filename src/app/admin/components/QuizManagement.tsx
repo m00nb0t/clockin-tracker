@@ -35,7 +35,7 @@ interface QuizFormData {
   active: boolean;
 }
 
-export default function QuizManagement() {
+export default function QuizManagement({ token }: { token: string }) {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [settings, setSettings] = useState<QuizSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,11 +62,13 @@ export default function QuizManagement() {
   useEffect(() => {
     fetchQuestions();
     fetchSettings();
-  }, []);
+  }, [token]);
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('/api/admin/quiz/settings');
+      const response = await fetch('/api/admin/quiz/settings', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         setSettings(data);
@@ -82,7 +84,9 @@ export default function QuizManagement() {
 
   const fetchQuestions = async () => {
     try {
-      const response = await fetch('/api/admin/quiz');
+      const response = await fetch('/api/admin/quiz', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         setQuestions(data);
@@ -106,7 +110,10 @@ export default function QuizManagement() {
 
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(formData),
       });
 
@@ -147,6 +154,7 @@ export default function QuizManagement() {
     try {
       const response = await fetch(`/api/admin/quiz/${question.id}`, {
         method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
@@ -168,7 +176,10 @@ export default function QuizManagement() {
     try {
       const response = await fetch('/api/admin/quiz/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(settingsFormData),
       });
 

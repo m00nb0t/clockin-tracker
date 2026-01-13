@@ -29,7 +29,7 @@ interface FanvueCreator {
   role: string;
 }
 
-export default function CreatorManagement() {
+export default function CreatorManagement({ token }: { token: string }) {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -50,11 +50,13 @@ export default function CreatorManagement() {
 
   useEffect(() => {
     fetchCreators();
-  }, []);
+  }, [token]);
 
   const fetchCreators = async () => {
     try {
-      const response = await fetch('/api/admin/creators');
+      const response = await fetch('/api/admin/creators', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         setCreators(data.creators);
@@ -69,7 +71,9 @@ export default function CreatorManagement() {
   const fetchFanvueCreators = async () => {
     setFanvueLoading(true);
     try {
-      const response = await fetch('/api/admin/fanvue-creators');
+      const response = await fetch('/api/admin/fanvue-creators', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         setFanvueCreators(data.creators);
@@ -96,7 +100,10 @@ export default function CreatorManagement() {
 
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           ...formData,
           fanvueUuid: formData.platform === 'fanvue' ? formData.fanvueUuid : null,
@@ -148,7 +155,10 @@ export default function CreatorManagement() {
 
       const response = await fetch('/api/admin/creators?bulk=true', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ creators: importData }),
       });
 
@@ -185,7 +195,10 @@ export default function CreatorManagement() {
     try {
       const response = await fetch('/api/admin/creators?bulk=true', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ creators: creatorsToImport }),
       });
 
@@ -213,6 +226,7 @@ export default function CreatorManagement() {
     try {
       const response = await fetch(`/api/admin/creators/${creator.id}`, {
         method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {

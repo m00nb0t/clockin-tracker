@@ -19,7 +19,7 @@ interface EmployeeFormData {
   active: boolean;
 }
 
-export default function EmployeeManagement() {
+export default function EmployeeManagement({ token }: { token: string }) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -33,11 +33,13 @@ export default function EmployeeManagement() {
 
   useEffect(() => {
     fetchEmployees();
-  }, []);
+  }, [token]);
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/admin/employees');
+      const response = await fetch('/api/admin/employees', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         setEmployees(data);
@@ -61,7 +63,10 @@ export default function EmployeeManagement() {
 
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(formData),
       });
 
@@ -97,6 +102,7 @@ export default function EmployeeManagement() {
     try {
       const response = await fetch(`/api/admin/employees/${employee.id}`, {
         method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {

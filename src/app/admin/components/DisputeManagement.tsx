@@ -16,7 +16,7 @@ interface Dispute {
   resolution?: string;
 }
 
-export default function DisputeManagement() {
+export default function DisputeManagement({ token }: { token: string }) {
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
@@ -25,11 +25,13 @@ export default function DisputeManagement() {
 
   useEffect(() => {
     fetchDisputes();
-  }, []);
+  }, [token]);
 
   const fetchDisputes = async () => {
     try {
-      const response = await fetch('/api/admin/disputes');
+      const response = await fetch('/api/admin/disputes', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         setDisputes(data.disputes);
@@ -50,7 +52,10 @@ export default function DisputeManagement() {
     try {
       const response = await fetch(`/api/admin/disputes/${dispute.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           status,
           resolution: resolution.trim(),
