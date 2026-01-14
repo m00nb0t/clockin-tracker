@@ -41,7 +41,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // In our system, the token only says { isAdmin: true }. 
     // To make this fully production ready, we need to know WHICH admin did it.
     // For now, let's at least ensure the database has an admin we can attribute this to.
-    
+
     const result = await db
       .update(tipDisputes)
       .set({

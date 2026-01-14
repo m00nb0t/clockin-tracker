@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching employees:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch employees: ${message}` },
-      { status: 400 }
+      { error: `Database error: ${message}` },
+      { status: 500 }
     );
   }
 }
@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
     console.error('Error creating employee:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to create employee: ${message}` },
-      { status: 400 }
+      { error: `Database error: ${message}` },
+      { status: 500 }
     );
   }
 }

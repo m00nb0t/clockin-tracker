@@ -80,8 +80,8 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching sales:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch sales: ${message}` },
-      { status: 400 }
+      { error: `Database error: ${message}` },
+      { status: 500 }
     );
   }
 }

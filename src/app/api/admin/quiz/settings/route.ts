@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching quiz settings:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch quiz settings: ${message}` },
-      { status: 400 }
+      { error: `Database error: ${message}` },
+      { status: 500 }
     );
   }
 }
@@ -46,7 +46,8 @@ export async function PUT(request: NextRequest) {
     // Require admin authentication
     requireAdminDashboard(request);
 
-    const { startDate, timezone } = await request.json();
+    const body = await request.json();
+    const { startDate, timezone } = body;
 
     if (!startDate) {
       return NextResponse.json(
@@ -55,30 +56,43 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Sanitize startDate to YYYY-MM-DD
+    const sanitizedStartDate = startDate.split('T')[0];
+
     // Check if settings exist
     const existing = await db.select().from(quizSettings).limit(1);
 
     let result;
     if (existing.length > 0) {
       // Update existing settings
-      result = await db
+      await db
         .update(quizSettings)
         .set({
-          startDate,
+          startDate: sanitizedStartDate,
           timezone: timezone || 'Asia/Shanghai',
           updatedAt: new Date(),
         })
-        .where(eq(quizSettings.id, existing[0].id))
-        .returning();
+        .where(eq(quizSettings.id, existing[0].id));
+      
+      // Fetch the updated record instead of using .returning()
+      const updated = await db.select().from(quizSettings).where(eq(quizSettings.id, existing[0].id)).limit(1);
+      result = updated;
     } else {
-      // Create new settings
-      result = await db
+      // Insert new settings
+      await db
         .insert(quizSettings)
         .values({
-          startDate,
+          startDate: sanitizedStartDate,
           timezone: timezone || 'Asia/Shanghai',
-        })
-        .returning();
+        });
+      
+      // Fetch the new record
+      const inserted = await db.select().from(quizSettings).orderBy(desc(quizSettings.id)).limit(1);
+      result = inserted;
+    }
+
+    if (!result[0]) {
+      throw new Error('Failed to save settings to database');
     }
 
     return NextResponse.json(result[0]);
@@ -86,8 +100,8 @@ export async function PUT(request: NextRequest) {
     console.error('Error updating quiz settings:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to update quiz settings: ${message}` },
-      { status: 400 }
+      { error: `Update failed: ${message}` },
+      { status: 500 }
     );
   }
 }

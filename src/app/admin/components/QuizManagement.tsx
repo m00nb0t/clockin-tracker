@@ -196,7 +196,9 @@ export default function QuizManagement({ token }: { token: string }) {
 
   const getScheduledDate = (sequenceNumber: number) => {
     if (!settings?.startDate) return `Seq ${sequenceNumber}`;
-    const [year, month, day] = settings.startDate.split('-').map(Number);
+    // Sanitize input: Take only the YYYY-MM-DD part if there's a timestamp
+    const dateOnly = settings.startDate.split('T')[0];
+    const [year, month, day] = dateOnly.split('-').map(Number);
     const scheduled = new Date(year, month - 1, day + (sequenceNumber - 1));
     return scheduled.toLocaleDateString('en-GB', { 
       day: '2-digit', 

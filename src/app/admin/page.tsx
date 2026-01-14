@@ -92,7 +92,7 @@ export default function AdminDashboard() {
       console.error('Error fetching stats:', error);
     } finally {
       setLoading(false);
-    }
+      }
   }, [adminToken]);
 
   const promptAdminLogin = useCallback(() => {

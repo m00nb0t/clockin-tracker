@@ -5,8 +5,9 @@ import { eq, desc } from 'drizzle-orm';
 import { getGmt8Date } from '@/lib/dateUtils';
 
 
-function getDaysSinceStart(startDateStr: string, timezone: string = 'Asia/Shanghai'): number {
-  const startDate = new Date(startDateStr + 'T00:00:00');
+function getDaysSinceStart(startDateStr: string, _timezone: string = 'Asia/Shanghai'): number {
+  const dateOnly = startDateStr.split('T')[0];
+  const startDate = new Date(dateOnly + 'T00:00:00');
   const currentDate = getGmt8Date();
 
   // Calculate days difference
