@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       })
       .from(tipDisputes)
       .innerJoin(fanvueTips, eq(tipDisputes.tipId, fanvueTips.id))
-      .innerJoin(creators, eq(fanvueTips.recipientUuid, creators.fanvueUuid))
+      .leftJoin(creators, eq(fanvueTips.recipientUuid, creators.fanvueUuid))
       .innerJoin(employees, eq(tipDisputes.disputedBy, employees.id))
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
       .orderBy(desc(tipDisputes.createdAt))

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizSettings } from '@/lib/db/schema';
-import { desc } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { requireAdminDashboard } from '@/lib/auth';
+import { formatGmt8Date } from '@/lib/dateUtils';
 
 // GET /api/admin/quiz/settings - Get current quiz settings
 export async function GET(request: NextRequest) {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
       const defaultSettings = await db
         .insert(quizSettings)
         .values({
-          startDate: new Date().toISOString().split('T')[0], // Today
+          startDate: formatGmt8Date(), // Today
           timezone: 'Asia/Shanghai',
         })
         .returning();
@@ -54,16 +55,31 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Delete existing settings and insert new ones
-    await db.delete(quizSettings);
+    // Check if settings exist
+    const existing = await db.select().from(quizSettings).limit(1);
 
-    const result = await db
-      .insert(quizSettings)
-      .values({
-        startDate,
-        timezone: timezone || 'Asia/Shanghai',
-      })
-      .returning();
+    let result;
+    if (existing.length > 0) {
+      // Update existing settings
+      result = await db
+        .update(quizSettings)
+        .set({
+          startDate,
+          timezone: timezone || 'Asia/Shanghai',
+          updatedAt: new Date(),
+        })
+        .where(eq(quizSettings.id, existing[0].id))
+        .returning();
+    } else {
+      // Create new settings
+      result = await db
+        .insert(quizSettings)
+        .values({
+          startDate,
+          timezone: timezone || 'Asia/Shanghai',
+        })
+        .returning();
+    }
 
     return NextResponse.json(result[0]);
   } catch (error: unknown) {

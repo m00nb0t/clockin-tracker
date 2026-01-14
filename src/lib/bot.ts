@@ -1,7 +1,7 @@
 import { Bot, Context, session, SessionFlavor } from 'grammy';
 import { db } from './db';
 import { employees, clockIns, clockInCreators, sales, fanvueTips, tipDisputes, creators } from './db/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { formatGmt8Date } from './dateUtils';
 
 interface SessionData {
   saleCategory?: string;
@@ -51,9 +51,7 @@ async function getEmployeeByTelegramId(telegramId: string, username?: string | n
 
 
 function formatDate(date: Date): string {
-  // Return YYYY-MM-DD in GMT+8
-  const gmt8Date = new Date(date.getTime() + (8 * 60 * 60 * 1000));
-  return gmt8Date.toISOString().split('T')[0];
+  return formatGmt8Date(date);
 }
 
 function calculateHours(clockInTime: Date, clockOutTime?: Date): number | null {
@@ -159,10 +157,6 @@ bot.command('clockout', async (ctx: MyContext) => {
       totalHours
     })
     .where(eq(clockIns.id, existingClockIn[0].id));
-
-  // Clean up clock-in creator associations
-  await db.delete(clockInCreators)
-    .where(eq(clockInCreators.clockInId, existingClockIn[0].id));
 
   await ctx.reply(
     `Clocked out successfully!\n` +
@@ -502,6 +496,8 @@ bot.command('dispute_tip', async (ctx: MyContext) => {
   }
 
   // Find recent tips for this employee that match the amount
+  const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  
   const recentTips = await db.select({
     id: fanvueTips.id,
     amount: fanvueTips.amount,
@@ -513,7 +509,7 @@ bot.command('dispute_tip', async (ctx: MyContext) => {
   .where(and(
     eq(fanvueTips.assignedEmployeeId, employee.id),
     eq(fanvueTips.amount, parseFloat(tipAmount)),
-    sql`${fanvueTips.timestamp} >= datetime('now', '-24 hours')`
+    sql`${fanvueTips.timestamp} >= ${last24h}`
   ))
   .orderBy(desc(fanvueTips.timestamp))
   .limit(5);
@@ -561,10 +557,14 @@ async function createDispute(tipId: number, employeeId: number, reason: string) 
 }
 
 
-// Handle dispute selection
+// Handle all text messages (Sales input, Dispute selection, etc.)
 bot.on('message:text', async (ctx: MyContext) => {
-  if (ctx.session?.awaitingDisputeSelection && ctx.message) {
-    const selection = parseInt(ctx.message.text!);
+  if (!ctx.message?.text) return;
+  const text = ctx.message.text.trim();
+
+  // 1. Handle Dispute Selection
+  if (ctx.session?.awaitingDisputeSelection) {
+    const selection = parseInt(text);
     const options = ctx.session.disputeOptions || [];
 
     if (isNaN(selection) || selection < 1 || selection > options.length) {
@@ -579,20 +579,17 @@ bot.on('message:text', async (ctx: MyContext) => {
 
     if (employee && employee.active) {
       await createDispute(selectedTip.id, employee.id, 'Selected from multiple options');
-      await ctx.reply(`✅ Dispute submitted for $${selectedTip.amount} tip from ${selectedTip.creatorName || 'Unknown Creator'} at ${new Date(selectedTip.timestamp).toLocaleString()}\n\nAn admin will review your dispute.`);
+      await ctx.reply(`✅ Dispute submitted for $${selectedTip.amount} tip from ${selectedTip.creatorName || 'Unknown Creator'} at ${new Date(selectedTip.timestamp).toLocaleString()}\n\nReason: Selected from multiple options\n\nAn admin will review your dispute.`);
     }
 
     // Clear session
     ctx.session = { ...ctx.session, awaitingDisputeSelection: false, disputeOptions: undefined };
     return;
   }
-});
 
-// Handle sale amount input
-bot.on('message:text', async (ctx: MyContext) => {
-  if (ctx.session?.saleCategory && ctx.session?.addingSales && ctx.message) {
-    const amountText = ctx.message.text!.trim();
-    const amount = parseFloat(amountText);
+  // 2. Handle Sale Amount Input
+  if (ctx.session?.saleCategory && ctx.session?.addingSales) {
+    const amount = parseFloat(text);
 
     if (isNaN(amount) || amount <= 0) {
       await ctx.reply('Please enter a valid positive amount (e.g., 25.50):');
@@ -641,6 +638,7 @@ bot.on('message:text', async (ctx: MyContext) => {
 
     ctx.session.addingSales = false;
     ctx.session.saleCategory = undefined;
+    return;
   }
 });
 

@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { employees, clockIns, clockInCreators, creators } from '@/lib/db/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { requireUser } from '@/lib/auth';
+import { formatGmt8Date } from '@/lib/dateUtils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatGmt8Date();
     const now = new Date();
 
     // Check if already clocked in today

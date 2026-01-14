@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { employees, admins } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { requireAdminDashboard } from '@/lib/auth';
 
 // GET /api/admin/employees/[id] - Get single employee details
@@ -70,7 +70,10 @@ export async function PUT(
     const existing = await db
       .select()
       .from(employees)
-      .where(eq(employees.telegramId, telegramId)) // Simplified check
+      .where(and(
+        eq(employees.telegramId, telegramId),
+        sql`${employees.id} != ${employeeId}`
+      ))
       .limit(1);
 
     if (existing[0]) {

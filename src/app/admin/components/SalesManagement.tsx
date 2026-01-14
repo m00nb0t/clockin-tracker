@@ -57,7 +57,7 @@ export default function SalesManagement({ token }: { token: string }) {
     employeeId: 0,
     category: 'tip',
     amount: '',
-    date: new Date().toISOString().split('T')[0],
+    date: new Date(new Date().getTime() + (8 * 60 * 60 * 1000)).toISOString().split('T')[0],
     description: '',
   });
 
@@ -180,7 +180,7 @@ export default function SalesManagement({ token }: { token: string }) {
       employeeId: 0,
       category: 'tip',
       amount: '',
-      date: new Date().toISOString().split('T')[0],
+      date: new Date(new Date().getTime() + (8 * 60 * 60 * 1000)).toISOString().split('T')[0],
       description: '',
     });
   };

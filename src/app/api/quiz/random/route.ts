@@ -2,16 +2,12 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizQuestions, quizSettings } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { getGmt8Date } from '@/lib/dateUtils';
 
 
 function getDaysSinceStart(startDateStr: string, timezone: string = 'Asia/Shanghai'): number {
   const startDate = new Date(startDateStr + 'T00:00:00');
-  const now = new Date();
-
-  // Convert to target timezone
-  const timezoneOffset = timezone === 'Asia/Shanghai' ? 8 * 60 : 0;
-  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const currentDate = new Date(utcTime + (timezoneOffset * 60000));
+  const currentDate = getGmt8Date();
 
   // Calculate days difference
   const diffTime = currentDate.getTime() - startDate.getTime();

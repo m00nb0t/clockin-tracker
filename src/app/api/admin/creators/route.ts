@@ -166,11 +166,21 @@ async function handleBulkImport(request: NextRequest) {
         }
 
         // Create creator
+        const sanitizedUuid = fanvueUuid ? sanitizeUUID(fanvueUuid) : null;
+        
+        if (platform === 'fanvue' && !sanitizedUuid) {
+          results.failed.push({
+            data: creatorData,
+            error: 'A valid Fanvue UUID is required'
+          });
+          continue;
+        }
+
         const result = await db
           .insert(creators)
           .values({
             name: sanitizeString(name, 100),
-            fanvueUuid: fanvueUuid ? sanitizeUUID(fanvueUuid) : null,
+            fanvueUuid: sanitizedUuid,
             platform,
             active: active !== undefined ? active : true,
           })
@@ -244,11 +254,20 @@ async function handleSingleCreate(request: NextRequest) {
     }
 
     // Create creator
+    const sanitizedUuid = fanvueUuid ? sanitizeUUID(fanvueUuid) : null;
+    
+    if (platform === 'fanvue' && !sanitizedUuid) {
+      return NextResponse.json(
+        { error: 'A valid Fanvue UUID is required' },
+        { status: 400 }
+      );
+    }
+
     const result = await db
       .insert(creators)
       .values({
         name: sanitizeString(name, 100),
-        fanvueUuid: fanvueUuid ? sanitizeUUID(fanvueUuid) : null,
+        fanvueUuid: sanitizedUuid,
         platform,
         active: active !== undefined ? active : true,
       })

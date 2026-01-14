@@ -4,6 +4,7 @@ import { creators, clockInCreators, clockIns, employees, sales, fanvueTips } fro
 import { eq, and, sql, or, isNull } from 'drizzle-orm';
 import crypto from 'crypto';
 import bot from '@/lib/bot';
+import { formatGmt8Date } from '@/lib/dateUtils';
 
 // Verify webhook signature
 function verifyWebhookSignature(request: NextRequest, body: string): boolean {
@@ -135,7 +136,7 @@ export async function POST(request: NextRequest) {
             employeeId: activeEmployee.employeeId,
             category: 'tip',
             amount: tipAmount,
-            date: new Date(timestamp).toISOString().split('T')[0],
+            date: formatGmt8Date(new Date(timestamp)),
             description: `Fanvue tip from ${creator.name}`,
             source: 'fanvue_auto',
             creatorId: creator.id,

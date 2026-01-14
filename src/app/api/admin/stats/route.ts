@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { employees, clockIns, sales } from '@/lib/db/schema';
 import { eq, sql, and, gte, lte } from 'drizzle-orm';
 import { requireAdminDashboard } from '@/lib/auth';
+import { formatGmt8Date, getGmt8Date } from '@/lib/dateUtils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,8 @@ export async function GET(request: NextRequest) {
     const totalEmployees = totalEmployeesResult[0].count;
 
     // Get active employees (clocked in today or recently)
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatGmt8Date();
+
     const activeEmployeesResult = await db.select({ count: sql<number>`count(distinct ${clockIns.employeeId})` })
       .from(clockIns)
       .where(eq(clockIns.date, today));
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Get this week's hours and sales (GMT+8)
     // In GMT+8, we want to find the most recent Monday at midnight
-    const nowGmt8 = new Date(new Date().getTime() + (8 * 60 * 60 * 1000));
+    const nowGmt8 = getGmt8Date();
     const dayOfWeek = nowGmt8.getUTCDay(); // 0 is Sunday, 1 is Monday...
     const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday(0), subtract 6 to get to last Monday
     

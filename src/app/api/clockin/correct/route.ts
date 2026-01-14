@@ -18,21 +18,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update the clock-in record with corrected clock-out time
-    const result = await db
-      .update(clockIns)
-      .set({
-        clockOutTime: new Date(clockOutTime),
-      })
+    // 1. Get the existing record to find the clockInTime
+    const existing = await db
+      .select()
+      .from(clockIns)
       .where(eq(clockIns.id, clockInId))
-      .returning();
+      .limit(1);
 
-    if (!result[0]) {
+    if (!existing[0]) {
       return NextResponse.json(
         { error: 'Clock-in record not found' },
         { status: 404 }
       );
     }
+
+    const clockInTime = new Date(existing[0].clockInTime);
+    const correctedClockOut = new Date(clockOutTime);
+    
+    // 2. Calculate the corrected total hours
+    const totalHours = Math.round((correctedClockOut.getTime() - clockInTime.getTime()) / (1000 * 60 * 60) * 100) / 100;
+
+    // 3. Update the clock-in record
+    await db
+      .update(clockIns)
+      .set({
+        clockOutTime: correctedClockOut,
+        totalHours: totalHours,
+      })
+      .where(eq(clockIns.id, clockInId));
 
     return NextResponse.json({
       success: true,

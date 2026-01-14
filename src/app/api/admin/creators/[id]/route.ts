@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { creators, clockInCreators } from '@/lib/db/schema';
+import { creators } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { requireAdminDashboard } from '@/lib/auth';
 
@@ -143,10 +143,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         { status: 400 }
       );
     }
-
-    // Clean up any existing clock-in creator associations
-    await db.delete(clockInCreators)
-      .where(eq(clockInCreators.creatorId, creatorId));
 
     // Soft delete by setting active to false
     const result = await db
