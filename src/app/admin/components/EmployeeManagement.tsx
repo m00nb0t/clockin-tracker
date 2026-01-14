@@ -166,7 +166,7 @@ export default function EmployeeManagement({ token }: { token: string }) {
                   Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Telegram ID
+                  Telegram Username/ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Role
@@ -189,7 +189,7 @@ export default function EmployeeManagement({ token }: { token: string }) {
                     {employee.name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    @{employee.telegramId}
+                    {employee.telegramId}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {employee.role}
@@ -256,16 +256,19 @@ export default function EmployeeManagement({ token }: { token: string }) {
 
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Telegram Username *
+                      Telegram Username or ID *
                     </label>
                     <input
                       type="text"
                       required
                       value={formData.telegramId}
-                      onChange={(e) => setFormData({ ...formData, telegramId: e.target.value.replace('@', '') })}
+                      onChange={(e) => setFormData({ ...formData, telegramId: e.target.value.replace('@', '').trim() })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="username (without @)"
+                      placeholder="e.g. johndoe or 12345678"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter username (without @) or numeric ID to whitelist.
+                    </p>
                   </div>
 
                   <div className="mb-4">

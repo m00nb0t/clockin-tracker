@@ -16,11 +16,11 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(quizQuestions.createdAt));
 
     return NextResponse.json(questions);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching quiz questions:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch quiz questions' },
-      { status: 500 }
+      { error: `Failed to fetch quiz questions: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }
@@ -31,11 +31,11 @@ export async function POST(request: NextRequest) {
     // Require admin authentication
     requireAdminDashboard(request);
 
-    const { sequenceNumber, question, optionA, optionB, optionC, optionD, correctAnswer, explanation } = await request.json();
+    const { question, optionA, optionB, optionC, optionD, correctAnswer, explanation } = await request.json();
 
-    if (!sequenceNumber || !question || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {
+    if (!question || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {
       return NextResponse.json(
-        { error: 'Sequence number and all question fields are required except explanation' },
+        { error: 'All question fields are required except explanation' },
         { status: 400 }
       );
     }
@@ -47,25 +47,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if sequence number already exists
-    const existingSequence = await db
-      .select()
-      .from(quizQuestions)
-      .where(eq(quizQuestions.sequenceNumber, sequenceNumber))
-      .limit(1);
-
-    if (existingSequence[0]) {
-      return NextResponse.json(
-        { error: 'Sequence number already exists' },
-        { status: 400 }
-      );
-    }
+    // Auto-calculate sequence number (find max and add 1)
+    const maxSequence = await db
+      .select({ maxSeq: sql<number>`max(${quizQuestions.sequenceNumber})` })
+      .from(quizQuestions);
+    
+    const nextSequence = (maxSequence[0]?.maxSeq || 0) + 1;
 
     // Create quiz question
     const result = await db
       .insert(quizQuestions)
       .values({
-        sequenceNumber,
+        sequenceNumber: nextSequence,
         question: question.trim(),
         optionA: optionA.trim(),
         optionB: optionB.trim(),
@@ -78,11 +71,11 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json(result[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating quiz question:', error);
     return NextResponse.json(
-      { error: 'Failed to create quiz question' },
-      { status: 500 }
+      { error: `Failed to create quiz question: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }

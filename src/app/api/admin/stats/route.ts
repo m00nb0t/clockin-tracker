@@ -64,8 +64,8 @@ export async function GET(request: NextRequest) {
       thisWeekHours,
       thisWeekSales,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching admin stats:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: `Failed to fetch stats: ${error.message || 'Unknown error'}` }, { status: 400 });
   }
 }

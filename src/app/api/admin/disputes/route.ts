@@ -47,11 +47,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       disputes: disputesList,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching disputes:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch disputes' },
-      { status: 500 }
+      { error: `Failed to fetch disputes: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }

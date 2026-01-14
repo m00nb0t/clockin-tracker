@@ -35,9 +35,9 @@ export async function POST(request: NextRequest) {
     const body = JSON.parse(bodyText);
     await bot.handleUpdate(body);
     return NextResponse.json({ ok: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Webhook error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: `Internal server error: ${error.message || 'Unknown'}` }, { status: 400 });
   }
 }
 

@@ -30,7 +30,7 @@ export async function GET() {
       .limit(1);
 
     if (settings.length === 0) {
-      return NextResponse.json({ error: 'Quiz settings not configured' }, { status: 500 });
+      return NextResponse.json({ error: 'Quiz settings not configured' }, { status: 400 });
     }
 
     const quizConfig = settings[0];
@@ -68,8 +68,8 @@ export async function GET() {
       dayNumber: daysSinceStart,
       totalQuestions: questions.length,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching daily question:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: `Internal server error: ${error.message || 'Unknown'}` }, { status: 400 });
   }
 }

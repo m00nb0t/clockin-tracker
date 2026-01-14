@@ -73,11 +73,12 @@ export async function authenticateRequest(request: Request): Promise<AuthUser | 
     }
 
     // Find employee by telegram ID
-    const employeeResult = await db
+    let employeeResult = await db
       .select({
         id: employees.id,
         name: employees.name,
         telegramId: employees.telegramId,
+        active: employees.active,
         isAdmin: sql<boolean>`CASE WHEN ${admins.id} IS NOT NULL THEN true ELSE false END`
       })
       .from(employees)
@@ -85,7 +86,35 @@ export async function authenticateRequest(request: Request): Promise<AuthUser | 
       .where(eq(employees.telegramId, telegramUser.id.toString()))
       .limit(1);
 
-    if (!employeeResult[0]) {
+    // If not found by ID, try handshake with username
+    if (!employeeResult[0] && telegramUser.username) {
+      const usernameEmployee = await db
+        .select({
+          id: employees.id,
+          name: employees.name,
+          telegramId: employees.telegramId,
+          active: employees.active,
+          isAdmin: sql<boolean>`CASE WHEN ${admins.id} IS NOT NULL THEN true ELSE false END`
+        })
+        .from(employees)
+        .leftJoin(admins, eq(employees.id, admins.employeeId))
+        .where(eq(employees.telegramId, telegramUser.username.replace('@', '').trim()))
+        .limit(1);
+
+      if (usernameEmployee[0]) {
+        // CONVERSION: Update record with numeric ID
+        await db.update(employees)
+          .set({ telegramId: telegramUser.id.toString() })
+          .where(eq(employees.id, usernameEmployee[0].id));
+        
+        employeeResult = [{
+          ...usernameEmployee[0],
+          telegramId: telegramUser.id.toString()
+        }];
+      }
+    }
+
+    if (!employeeResult[0] || !employeeResult[0].active) {
       return null;
     }
 

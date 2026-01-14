@@ -4,7 +4,6 @@ import { employees, clockIns, clockInCreators, sales, fanvueTips, tipDisputes, c
 import { eq, and, desc, sql } from 'drizzle-orm';
 
 interface SessionData {
-  awaitingName?: boolean;
   saleCategory?: string;
   selectedCreatorId?: number;
   addingSales?: boolean;
@@ -23,9 +22,31 @@ bot.use(session({
 }));
 
 // Helper functions
-async function getEmployeeByTelegramId(telegramId: string) {
-  const result = await db.select().from(employees).where(eq(employees.telegramId, telegramId)).limit(1);
-  return result[0] || null;
+async function getEmployeeByTelegramId(telegramId: string, username?: string | null) {
+  // 1. Try finding by numeric ID (The "Lock")
+  let employee = await db.select().from(employees).where(eq(employees.telegramId, telegramId)).limit(1);
+  
+  if (employee[0]) {
+    return employee[0];
+  }
+
+  // 2. If not found by ID, try finding by username (The "Handshake")
+  if (username) {
+    const cleanUsername = username.replace('@', '').trim();
+    let usernameEmployee = await db.select().from(employees).where(eq(employees.telegramId, cleanUsername)).limit(1);
+    
+    if (usernameEmployee[0]) {
+      // CONVERSION: Update the record with the numeric ID forever
+      await db.update(employees)
+        .set({ telegramId: telegramId })
+        .where(eq(employees.id, usernameEmployee[0].id));
+      
+      console.log(`Handshake successful: Linked username ${cleanUsername} to ID ${telegramId}`);
+      return { ...usernameEmployee[0], telegramId };
+    }
+  }
+
+  return null;
 }
 
 
@@ -43,60 +64,36 @@ function calculateHours(clockInTime: Date, clockOutTime?: Date): number | null {
 // Bot commands
 bot.command('start', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
-  let employee = await getEmployeeByTelegramId(telegramId);
+  const username = ctx.from!.username;
+  const employee = await getEmployeeByTelegramId(telegramId, username);
 
   if (!employee) {
-    // New user - create employee record
-    await ctx.reply('Welcome! Please enter your full name to register:');
-    ctx.session = { awaitingName: true };
-  } else {
-    await ctx.reply(
-      `Welcome back, ${employee.name}!\n\n` +
-      `Commands:\n` +
-      `/clockin - Clock in (with quiz)\n` +
-      `/clockout - Clock out\n` +
-      `/addsale - Add sales\n` +
-      `/status - View today's status`
-    );
+    await ctx.reply('⚠️ Access Denied.\n\nYou are not authorized to use this bot. Please contact your admin to be whitelisted.');
+    return;
   }
-});
 
-// Handle name input for new users
-bot.on('message:text', async (ctx: MyContext) => {
-  if (ctx.session?.awaitingName && ctx.message) {
-    const name = ctx.message.text!.trim();
-    const telegramId = ctx.from!.id.toString();
-
-    if (name.length < 2) {
-      await ctx.reply('Please enter a valid full name (at least 2 characters):');
-      return;
-    }
-
-    // Create employee record
-    await db.insert(employees).values({
-      name,
-      telegramId,
-    });
-
-    await ctx.reply(
-      `Registration complete! Welcome, ${name}.\n\n` +
-      `Commands:\n` +
-      `/clockin - Clock in (with quiz)\n` +
-      `/clockout - Clock out\n` +
-      `/addsale - Add sales\n` +
-      `/status - View today's status`
-    );
-
-    ctx.session = {};
+  if (!employee.active) {
+    await ctx.reply('⚠️ Account Inactive.\n\nYour account has been deactivated. Please contact your admin.');
+    return;
   }
+
+  await ctx.reply(
+    `Welcome, ${employee.name}!\n\n` +
+    `Commands:\n` +
+    `/clockin - Clock in (with quiz)\n` +
+    `/clockout - Clock out\n` +
+    `/addsale - Add sales\n` +
+    `/status - View today's status`
+  );
 });
 
 bot.command('clockin', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
-  const employee = await getEmployeeByTelegramId(telegramId);
+  const username = ctx.from!.username;
+  const employee = await getEmployeeByTelegramId(telegramId, username);
 
-  if (!employee) {
-    await ctx.reply('Please register first with /start');
+  if (!employee || !employee.active) {
+    await ctx.reply('⚠️ Unauthorized. Please use /start to check your status.');
     return;
   }
 
@@ -130,10 +127,11 @@ bot.command('clockin', async (ctx: MyContext) => {
 
 bot.command('clockout', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
-  const employee = await getEmployeeByTelegramId(telegramId);
+  const username = ctx.from!.username;
+  const employee = await getEmployeeByTelegramId(telegramId, username);
 
-  if (!employee) {
-    await ctx.reply('Please register first with /start');
+  if (!employee || !employee.active) {
+    await ctx.reply('⚠️ Unauthorized.');
     return;
   }
 
@@ -175,10 +173,11 @@ bot.command('clockout', async (ctx: MyContext) => {
 
 bot.command('addsale', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
-  const employee = await getEmployeeByTelegramId(telegramId);
+  const username = ctx.from!.username;
+  const employee = await getEmployeeByTelegramId(telegramId, username);
 
-  if (!employee) {
-    await ctx.reply('Please register first with /start');
+  if (!employee || !employee.active) {
+    await ctx.reply('⚠️ Unauthorized.');
     return;
   }
 
@@ -247,10 +246,11 @@ bot.on('callback_query', async (ctx: MyContext) => {
   if (callbackData.startsWith('stats_')) {
     const period = callbackData.replace('stats_', '') as 'today' | 'week' | 'month' | 'biweekly';
     const telegramId = ctx.from!.id.toString();
-    const employee = await getEmployeeByTelegramId(telegramId);
+    const username = ctx.from!.username;
+    const employee = await getEmployeeByTelegramId(telegramId, username);
 
-    if (!employee) {
-      await ctx.answerCallbackQuery('Employee not found');
+    if (!employee || !employee.active) {
+      await ctx.answerCallbackQuery('Unauthorized');
       return;
     }
 
@@ -319,12 +319,15 @@ bot.on('callback_query', async (ctx: MyContext) => {
     await ctx.answerCallbackQuery();
   } else if (callbackData === 'add_another_sale') {
     const telegramId = ctx.from!.id.toString();
-    const employee = await getEmployeeByTelegramId(telegramId);
+    const username = ctx.from!.username;
+    const employee = await getEmployeeByTelegramId(telegramId, username);
     
+    if (!employee || !employee.active) return;
+
     const activeClockIn = await db.select()
       .from(clockIns)
       .where(and(
-        eq(clockIns.employeeId, employee!.id),
+        eq(clockIns.employeeId, employee.id),
         sql`${clockIns.clockOutTime} IS NULL`
       ))
       .limit(1);
@@ -375,10 +378,11 @@ bot.on('callback_query', async (ctx: MyContext) => {
 
 bot.command('status', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
-  const employee = await getEmployeeByTelegramId(telegramId);
+  const username = ctx.from!.username;
+  const employee = await getEmployeeByTelegramId(telegramId, username);
 
-  if (!employee) {
-    await ctx.reply('Please register first with /start');
+  if (!employee || !employee.active) {
+    await ctx.reply('⚠️ Unauthorized.');
     return;
   }
 
@@ -475,10 +479,11 @@ async function getEmployeeStats(employeeId: number, period: 'today' | 'week' | '
 
 bot.command('dispute_tip', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
-  const employee = await getEmployeeByTelegramId(telegramId);
+  const username = ctx.from!.username;
+  const employee = await getEmployeeByTelegramId(telegramId, username);
 
-  if (!employee) {
-    await ctx.reply('Please register first with /start');
+  if (!employee || !employee.active) {
+    await ctx.reply('⚠️ Unauthorized.');
     return;
   }
 
@@ -568,9 +573,11 @@ bot.on('message:text', async (ctx: MyContext) => {
     }
 
     const selectedTip = options[selection - 1];
-    const employee = await getEmployeeByTelegramId(ctx.from!.id.toString());
+    const telegramId = ctx.from!.id.toString();
+    const username = ctx.from!.username;
+    const employee = await getEmployeeByTelegramId(telegramId, username);
 
-    if (employee) {
+    if (employee && employee.active) {
       await createDispute(selectedTip.id, employee.id, 'Selected from multiple options');
       await ctx.reply(`✅ Dispute submitted for $${selectedTip.amount} tip from ${selectedTip.creatorName || 'Unknown Creator'} at ${new Date(selectedTip.timestamp).toLocaleString()}\n\nAn admin will review your dispute.`);
     }
@@ -593,14 +600,18 @@ bot.on('message:text', async (ctx: MyContext) => {
     }
 
     const telegramId = ctx.from!.id.toString();
-    const employee = await getEmployeeByTelegramId(telegramId);
+    const username = ctx.from!.username;
+    const employee = await getEmployeeByTelegramId(telegramId, username);
+    
+    if (!employee || !employee.active) return;
+
     const category = ctx.session.saleCategory;
     const creatorId = ctx.session.selectedCreatorId;
     const today = formatDate(new Date());
 
     // Save sale
     await db.insert(sales).values({
-      employeeId: employee!.id,
+      employeeId: employee.id,
       category,
       amount,
       date: today,

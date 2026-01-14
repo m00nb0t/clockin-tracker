@@ -39,11 +39,11 @@ export async function GET(
     }
 
     return NextResponse.json(salesEntry[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching sales entry:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch sales entry' },
-      { status: 500 }
+      { error: `Failed to fetch sales entry: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }
@@ -119,11 +119,11 @@ export async function PUT(
     }
 
     return NextResponse.json(result[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating sales entry:', error);
     return NextResponse.json(
-      { error: 'Failed to update sales entry' },
-      { status: 500 }
+      { error: `Failed to update sales entry: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }
@@ -162,11 +162,11 @@ export async function DELETE(
       success: true,
       message: 'Sales entry deleted successfully'
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting sales entry:', error);
     return NextResponse.json(
-      { error: 'Failed to delete sales entry' },
-      { status: 500 }
+      { error: `Failed to delete sales entry: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }

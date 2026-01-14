@@ -54,9 +54,9 @@ export async function GET(request: NextRequest) {
       clockIns: clockInsList,
       total: totalResult[0].count,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching clock-ins:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: `Failed to fetch shift history: ${error.message || 'Unknown error'}` }, { status: 400 });
   }
 }
 

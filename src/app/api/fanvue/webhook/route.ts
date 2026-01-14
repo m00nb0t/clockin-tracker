@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     // Verify webhook signature - required for security
     if (!process.env.FANVUE_WEBHOOK_SECRET) {
       console.error('FANVUE_WEBHOOK_SECRET not configured - webhook rejected');
-      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 400 });
     }
 
       if (!verifyWebhookSignature(request, bodyText)) {
@@ -171,11 +171,11 @@ export async function POST(request: NextRequest) {
           employee: activeEmployee.employeeName,
           amount: tipAmount
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Transaction failed:', error);
         return NextResponse.json(
-          { error: 'Failed to process tip assignment' },
-          { status: 500 }
+          { error: `Failed to process tip assignment: ${error.message || 'Unknown'}` },
+          { status: 400 }
         );
       }
     } else {
@@ -192,11 +192,11 @@ export async function POST(request: NextRequest) {
           context,
           status: 'unassigned',
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to record unassigned tip:', error);
         return NextResponse.json(
-          { error: 'Failed to record unassigned tip' },
-          { status: 500 }
+          { error: `Failed to record unassigned tip: ${error.message || 'Unknown'}` },
+          { status: 400 }
         );
       }
 
@@ -226,11 +226,11 @@ export async function POST(request: NextRequest) {
         amount: tipAmount
       });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Fanvue webhook error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: `Internal server error: ${error.message || 'Unknown'}` },
+      { status: 400 }
     );
   }
 }

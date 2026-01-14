@@ -24,7 +24,6 @@ interface QuizSettings {
 }
 
 interface QuizFormData {
-  sequenceNumber: number;
   question: string;
   optionA: string;
   optionB: string;
@@ -43,7 +42,6 @@ export default function QuizManagement({ token }: { token: string }) {
   const [showSettings, setShowSettings] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<QuizQuestion | null>(null);
   const [formData, setFormData] = useState<QuizFormData>({
-    sequenceNumber: 1,
     question: '',
     optionA: '',
     optionB: '',
@@ -134,7 +132,6 @@ export default function QuizManagement({ token }: { token: string }) {
   const handleEdit = (question: QuizQuestion) => {
     setEditingQuestion(question);
     setFormData({
-      sequenceNumber: question.sequenceNumber,
       question: question.question,
       optionA: question.optionA,
       optionB: question.optionB,
@@ -201,7 +198,6 @@ export default function QuizManagement({ token }: { token: string }) {
     setShowAddForm(false);
     setEditingQuestion(null);
     setFormData({
-      sequenceNumber: Math.max(...questions.map(q => q.sequenceNumber), 0) + 1,
       question: '',
       optionA: '',
       optionB: '',
@@ -210,7 +206,7 @@ export default function QuizManagement({ token }: { token: string }) {
       correctAnswer: 'A',
       explanation: '',
       active: true,
-    });
+    } as any);
   };
 
   if (loading) {
@@ -401,21 +397,6 @@ export default function QuizManagement({ token }: { token: string }) {
                 </h3>
 
                 <form onSubmit={handleSubmit}>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Sequence Number *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      value={formData.sequenceNumber}
-                      onChange={(e) => setFormData({ ...formData, sequenceNumber: parseInt(e.target.value) })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="1"
-                    />
-                  </div>
-
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Question *

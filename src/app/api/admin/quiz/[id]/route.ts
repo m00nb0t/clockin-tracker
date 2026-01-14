@@ -29,11 +29,11 @@ export async function GET(
     }
 
     return NextResponse.json(question[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching quiz question:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch quiz question' },
-      { status: 500 }
+      { error: `Failed to fetch quiz question: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }
@@ -48,11 +48,11 @@ export async function PUT(
     requireAdminDashboard(request);
     const { id } = await params;
     const questionId = parseInt(id);
-    const { sequenceNumber, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, active } = await request.json();
+    const { question, optionA, optionB, optionC, optionD, correctAnswer, explanation, active } = await request.json();
 
-    if (!sequenceNumber || !question || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {
+    if (!question || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {
       return NextResponse.json(
-        { error: 'Sequence number and all question fields are required except explanation' },
+        { error: 'All question fields are required except explanation' },
         { status: 400 }
       );
     }
@@ -64,28 +64,10 @@ export async function PUT(
       );
     }
 
-    // Check if sequence number already exists for another question
-    const existingSequence = await db
-      .select()
-      .from(quizQuestions)
-      .where(and(
-        eq(quizQuestions.sequenceNumber, sequenceNumber),
-        sql`${quizQuestions.id} != ${questionId}`
-      ))
-      .limit(1);
-
-    if (existingSequence[0]) {
-      return NextResponse.json(
-        { error: 'Sequence number already exists for another question' },
-        { status: 400 }
-      );
-    }
-
-    // Update quiz question
+    // Update quiz question (Sequence number is kept the same to avoid messing up the schedule)
     const result = await db
       .update(quizQuestions)
       .set({
-        sequenceNumber,
         question: question.trim(),
         optionA: optionA.trim(),
         optionB: optionB.trim(),
@@ -106,11 +88,11 @@ export async function PUT(
     }
 
     return NextResponse.json(result[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating quiz question:', error);
     return NextResponse.json(
-      { error: 'Failed to update quiz question' },
-      { status: 500 }
+      { error: `Failed to update quiz question: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }
@@ -169,11 +151,11 @@ export async function DELETE(
         message: 'Question deleted permanently'
       });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting quiz question:', error);
     return NextResponse.json(
-      { error: 'Failed to delete quiz question' },
-      { status: 500 }
+      { error: `Failed to delete quiz question: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }

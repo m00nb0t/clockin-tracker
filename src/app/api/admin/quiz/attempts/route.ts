@@ -66,9 +66,9 @@ export async function GET(request: NextRequest) {
         rate: statsResult[0].total > 0 ? (statsResult[0].correct / statsResult[0].total) * 100 : 0
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching quiz attempts:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: `Failed to fetch quiz results: ${error.message || 'Unknown error'}` }, { status: 400 });
   }
 }
 

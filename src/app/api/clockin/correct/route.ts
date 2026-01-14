@@ -38,11 +38,11 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Clock-out time corrected successfully'
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error correcting clock-out time:', error);
     return NextResponse.json(
-      { error: 'Failed to correct clock-out time' },
-      { status: 500 }
+      { error: `Failed to correct clock-out time: ${error.message || 'Unknown'}` },
+      { status: 400 }
     );
   }
 }

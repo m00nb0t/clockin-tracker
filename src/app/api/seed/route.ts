@@ -71,11 +71,11 @@ export async function POST(request: NextRequest) {
       message: `Seeded ${results.length} quiz questions`,
       questions: results
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error seeding quiz questions:', error);
     return NextResponse.json(
-      { error: 'Failed to seed quiz questions', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { error: 'Failed to seed quiz questions', details: error.message || 'Unknown error' },
+      { status: 400 }
     );
   }
 }

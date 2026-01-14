@@ -19,11 +19,11 @@ export async function GET() {
     return NextResponse.json({
       creators: creatorsList
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching creators:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch creators' },
-      { status: 500 }
+      { error: `Failed to fetch creators: ${error.message || 'Unknown'}` },
+      { status: 400 }
     );
   }
 }

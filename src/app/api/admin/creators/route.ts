@@ -58,11 +58,11 @@ export async function GET(request: NextRequest) {
       limit,
       offset,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching creators:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch creators' },
-      { status: 500 }
+      { error: `Failed to fetch creators: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
   }
 
   return handleSingleCreate(request);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in POST /api/admin/creators:', error);
     if (error instanceof Error && error.message === 'Admin access required') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && error.message === 'Authentication required') {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: `Internal server error: ${error.message || 'Unknown'}` }, { status: 400 });
   }
 }
 
@@ -176,10 +176,10 @@ async function handleBulkImport(request: NextRequest) {
 
         results.successful.push(result[0]);
 
-      } catch (error) {
+      } catch (error: any) {
         results.failed.push({
           data: creatorData,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error.message || 'Unknown error'
         });
       }
     }
@@ -189,11 +189,11 @@ async function handleBulkImport(request: NextRequest) {
       results
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in bulk import:', error);
     return NextResponse.json(
-      { error: 'Failed to process bulk import' },
-      { status: 500 }
+      { error: `Failed to process bulk import: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }
@@ -251,11 +251,11 @@ async function handleSingleCreate(request: NextRequest) {
       .returning();
 
     return NextResponse.json(result[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating creator:', error);
     return NextResponse.json(
-      { error: 'Failed to create creator' },
-      { status: 500 }
+      { error: `Failed to create creator: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }

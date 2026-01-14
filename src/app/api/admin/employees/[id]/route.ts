@@ -37,11 +37,11 @@ export async function GET(
     }
 
     return NextResponse.json(employee[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching employee:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch employee' },
-      { status: 500 }
+      { error: `Failed to fetch employee: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }
@@ -99,11 +99,11 @@ export async function PUT(
     }
 
     return NextResponse.json(result[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating employee:', error);
     return NextResponse.json(
-      { error: 'Failed to update employee' },
-      { status: 500 }
+      { error: `Failed to update employee: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }
@@ -143,11 +143,11 @@ export async function DELETE(
       success: true,
       message: 'Employee deactivated successfully'
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deactivating employee:', error);
     return NextResponse.json(
-      { error: 'Failed to deactivate employee' },
-      { status: 500 }
+      { error: `Failed to deactivate employee: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }

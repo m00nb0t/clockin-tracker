@@ -59,11 +59,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     return NextResponse.json(result[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error resolving dispute:', error);
     return NextResponse.json(
-      { error: 'Failed to resolve dispute' },
-      { status: 500 }
+      { error: `Failed to resolve dispute: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }

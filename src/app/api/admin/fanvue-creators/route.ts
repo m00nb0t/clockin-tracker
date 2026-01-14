@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     if (!clientId || !clientSecret) {
       return NextResponse.json(
         { error: 'Fanvue client credentials not configured. Please set FANVUE_CLIENT_ID and FANVUE_CLIENT_SECRET environment variables.' },
-        { status: 500 }
+        { status: 400 }
       );
     }
 
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     if (!accessToken) {
       return NextResponse.json(
         { error: 'No access token received from Fanvue API.' },
-        { status: 500 }
+        { status: 400 }
       );
     }
 
@@ -124,11 +124,11 @@ export async function GET(request: NextRequest) {
       total: creators.length,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching Fanvue creators:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch creators from Fanvue API' },
-      { status: 500 }
+      { error: `Failed to fetch creators from Fanvue API: ${error.message || 'Unknown'}` },
+      { status: 400 }
     );
   }
 }

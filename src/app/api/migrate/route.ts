@@ -12,11 +12,11 @@ export async function POST(request: NextRequest) {
       message: 'Use npm run db:push instead of this endpoint',
       command: 'npm run db:push'
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Migration error:', error);
     return NextResponse.json(
-      { error: 'Migration failed', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { error: 'Migration failed', details: error.message || 'Unknown error' },
+      { status: 400 }
     );
   }
 }

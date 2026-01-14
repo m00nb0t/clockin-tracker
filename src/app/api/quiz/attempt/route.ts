@@ -56,11 +56,11 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json(result[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error recording quiz attempt:', error);
     return NextResponse.json(
-      { error: 'Failed to record quiz attempt' },
-      { status: 500 }
+      { error: `Failed to record quiz attempt: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }
@@ -97,11 +97,11 @@ export async function GET(request: NextRequest) {
       .orderBy(quizAttempts.attemptNumber);
 
     return NextResponse.json(attempts);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching quiz attempts:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch quiz attempts' },
-      { status: 500 }
+      { error: `Failed to fetch quiz attempts: ${error.message || 'Unknown error'}` },
+      { status: 400 }
     );
   }
 }
