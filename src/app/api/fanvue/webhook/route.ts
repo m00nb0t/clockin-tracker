@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { creators, clockInCreators, clockIns, employees, sales, fanvueTips } from '@/lib/db/schema';
-import { eq, and, sql, or, isNull } from 'drizzle-orm';
+import { eq, and, sql, or, isNull, desc } from 'drizzle-orm';
 import crypto from 'crypto';
 import bot from '@/lib/bot';
 import { formatGmt8Date } from '@/lib/dateUtils';

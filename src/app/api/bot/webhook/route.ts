@@ -17,7 +17,7 @@ function verifyTelegramWebhook(request: NextRequest): boolean {
   }
 }
 
-const handleUpdate = webhookCallback(bot, 'next-js');
+const handleUpdate = webhookCallback(bot, 'std/http');
 
 export async function POST(request: NextRequest) {
   try {

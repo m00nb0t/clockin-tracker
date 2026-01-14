@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizQuestions } from '@/lib/db/schema';
+import { desc } from 'drizzle-orm';
 import { requireAdminDashboard } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {

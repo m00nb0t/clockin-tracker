@@ -1,0 +1,18 @@
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+
+# Database (Turso)
+DATABASE_URL=libsql://your-database.turso.io
+DATABASE_AUTH_TOKEN=your_auth_token_here
+
+# Next.js
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+
+# Fanvue API
+FANVUE_API_VERSION=2025-06-26
+FANVUE_CLIENT_ID=1c667d44-02c9-48a4-80bb-c0ae011ac677
+FANVUE_CLIENT_SECRET=wnfyJfGYnJJNKbRS55.mQmmEht
+FANVUE_WEBHOOK_SECRET=your_webhook_secret_here
+
+# Admin Notifications
+ADMIN_TELEGRAM_CHAT_ID=your_admin_chat_id_here
