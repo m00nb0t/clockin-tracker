@@ -194,6 +194,17 @@ export default function QuizManagement({ token }: { token: string }) {
     }
   };
 
+  const getScheduledDate = (sequenceNumber: number) => {
+    if (!settings?.startDate) return `Seq ${sequenceNumber}`;
+    const [year, month, day] = settings.startDate.split('-').map(Number);
+    const scheduled = new Date(year, month - 1, day + (sequenceNumber - 1));
+    return scheduled.toLocaleDateString('en-GB', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric' 
+    });
+  };
+
   const resetForm = () => {
     setShowAddForm(false);
     setEditingQuestion(null);
@@ -259,7 +270,7 @@ export default function QuizManagement({ token }: { token: string }) {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  #
+                  Scheduled Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Question
@@ -284,7 +295,7 @@ export default function QuizManagement({ token }: { token: string }) {
                 .map((question) => (
                 <tr key={question.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {question.sequenceNumber}
+                    {getScheduledDate(question.sequenceNumber)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
                     {question.question}
