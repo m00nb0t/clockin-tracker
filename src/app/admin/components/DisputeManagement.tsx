@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Dispute {
   id: number;
@@ -23,11 +23,7 @@ export default function DisputeManagement({ token }: { token: string }) {
   const [resolution, setResolution] = useState('');
   const [showResolutionModal, setShowResolutionModal] = useState(false);
 
-  useEffect(() => {
-    fetchDisputes();
-  }, [token]);
-
-  const fetchDisputes = async () => {
+  const fetchDisputes = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/disputes', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -41,7 +37,11 @@ export default function DisputeManagement({ token }: { token: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchDisputes();
+  }, [fetchDisputes]);
 
   const handleResolve = async (dispute: Dispute, status: 'resolved' | 'rejected') => {
     if (!resolution.trim()) {

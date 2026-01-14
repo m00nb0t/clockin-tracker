@@ -29,10 +29,11 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(settings[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching quiz settings:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch quiz settings: ${error.message || 'Unknown error'}` },
+      { error: `Failed to fetch quiz settings: ${message}` },
       { status: 400 }
     );
   }
@@ -65,10 +66,11 @@ export async function PUT(request: NextRequest) {
       .returning();
 
     return NextResponse.json(result[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating quiz settings:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to update quiz settings: ${error.message || 'Unknown error'}` },
+      { error: `Failed to update quiz settings: ${message}` },
       { status: 400 }
     );
   }

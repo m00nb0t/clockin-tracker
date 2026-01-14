@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
 import EmployeeManagement from './components/EmployeeManagement';
 import QuizManagement from './components/QuizManagement';
 import SalesManagement from './components/SalesManagement';
@@ -17,11 +16,11 @@ declare global {
     Telegram?: {
       WebApp?: {
         initData: string;
-        initDataUnsafe: any;
+        initDataUnsafe: unknown;
         version: string;
         platform: string;
         colorScheme: string;
-        themeParams: any;
+        themeParams: unknown;
         isExpanded: boolean;
         viewportHeight: number;
         viewportStableHeight: number;
@@ -30,27 +29,27 @@ declare global {
         isClosingConfirmationEnabled: boolean;
         expand(): void;
         close(): void;
-        showPopup(params: any): void;
+        showPopup(params: unknown): void;
         showAlert(message: string): void;
         showConfirm(message: string): Promise<boolean>;
         enableClosingConfirmation(): void;
         disableClosingConfirmation(): void;
-        onEvent(eventType: string, eventHandler: Function): void;
-        offEvent(eventType: string, eventHandler: Function): void;
+        onEvent(eventType: string, eventHandler: (args: unknown) => void): void;
+        offEvent(eventType: string, eventHandler: (args: unknown) => void): void;
         sendData(data: string): void;
         switchInlineQuery(query: string, choose_chat_types?: string[]): void;
         openLink(url: string): void;
         openTelegramLink(url: string): void;
         openInvoice(url: string): void;
-        showScanQrPopup(params: any): void;
+        showScanQrPopup(params: unknown): void;
         closeScanQrPopup(): void;
         readTextFromClipboard(): Promise<string>;
         requestWriteAccess(): Promise<boolean>;
-        requestContact(): Promise<any>;
+        requestContact(): Promise<unknown>;
         ready(): void;
-        MainButton: any;
-        BackButton: any;
-        SettingsButton: any;
+        MainButton: unknown;
+        BackButton: unknown;
+        SettingsButton: unknown;
       };
     };
   }
@@ -66,26 +65,37 @@ interface DashboardStats {
 }
 
 export default function AdminDashboard() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [adminToken, setAdminToken] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Check for stored admin token
-    const storedToken = localStorage.getItem('admin_token');
-    if (storedToken) {
-      // Verify token is still valid by making a test API call
-      verifyAdminToken(storedToken);
-    } else {
-      // No token, prompt for password
-      promptAdminLogin();
+  const fetchStats = useCallback(async (token?: string) => {
+    const currentToken = token || adminToken;
+    if (!currentToken) {
+      setLoading(false);
+      return;
     }
-  }, []);
 
-  const promptAdminLogin = () => {
+    try {
+      const response = await fetch('/api/admin/stats', {
+        headers: {
+          'Authorization': `Bearer ${currentToken}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [adminToken]);
+
+  const promptAdminLogin = useCallback(() => {
     const enteredPassword = prompt('Enter admin password:');
     if (enteredPassword) {
       // Hash the entered password using Web Crypto API
@@ -128,9 +138,9 @@ export default function AdminDashboard() {
     } else {
       window.location.href = '/';
     }
-  };
+  }, [fetchStats]);
 
-  const verifyAdminToken = (token: string) => {
+  const verifyAdminToken = useCallback((token: string) => {
     fetch('/api/admin/verify-token', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -148,31 +158,19 @@ export default function AdminDashboard() {
       localStorage.removeItem('admin_token');
       promptAdminLogin();
     });
-  };
+  }, [fetchStats, promptAdminLogin]);
 
-  const fetchStats = async (token?: string) => {
-    const currentToken = token || adminToken;
-    if (!currentToken) {
-      setLoading(false);
-      return;
+  useEffect(() => {
+    // Check for stored admin token
+    const storedToken = localStorage.getItem('admin_token');
+    if (storedToken) {
+      // Verify token is still valid by making a test API call
+      verifyAdminToken(storedToken);
+    } else {
+      // No token, prompt for password
+      promptAdminLogin();
     }
-
-    try {
-      const response = await fetch('/api/admin/stats', {
-        headers: {
-          'Authorization': `Bearer ${currentToken}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      }
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [verifyAdminToken, promptAdminLogin]);
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
@@ -280,7 +278,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Today's Sales</p>
+                    <p className="text-sm font-medium text-gray-600">Today&apos;s Sales</p>
                     <p className="text-2xl font-semibold text-gray-900">${(stats?.todaySales || 0).toFixed(2)}</p>
                   </div>
                 </div>

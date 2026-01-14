@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 // Telegram WebApp type declarations
@@ -9,11 +9,11 @@ declare global {
     Telegram?: {
       WebApp?: {
         initData: string;
-        initDataUnsafe: any;
+        initDataUnsafe: unknown;
         version: string;
         platform: string;
         colorScheme: string;
-        themeParams: any;
+        themeParams: unknown;
         isExpanded: boolean;
         viewportHeight: number;
         viewportStableHeight: number;
@@ -22,27 +22,27 @@ declare global {
         isClosingConfirmationEnabled: boolean;
         expand(): void;
         close(): void;
-        showPopup(params: any): void;
+        showPopup(params: unknown): void;
         showAlert(message: string): void;
         showConfirm(message: string): Promise<boolean>;
         enableClosingConfirmation(): void;
         disableClosingConfirmation(): void;
-        onEvent(eventType: string, eventHandler: Function): void;
-        offEvent(eventType: string, eventHandler: Function): void;
+        onEvent(eventType: string, eventHandler: (args: unknown) => void): void;
+        offEvent(eventType: string, eventHandler: (args: unknown) => void): void;
         sendData(data: string): void;
         switchInlineQuery(query: string, choose_chat_types?: string[]): void;
         openLink(url: string): void;
         openTelegramLink(url: string): void;
         openInvoice(url: string): void;
-        showScanQrPopup(params: any): void;
+        showScanQrPopup(params: unknown): void;
         closeScanQrPopup(): void;
         readTextFromClipboard(): Promise<string>;
         requestWriteAccess(): Promise<boolean>;
-        requestContact(): Promise<any>;
+        requestContact(): Promise<unknown>;
         ready(): void;
-        MainButton: any;
-        BackButton: any;
-        SettingsButton: any;
+        MainButton: unknown;
+        BackButton: unknown;
+        SettingsButton: unknown;
       };
     };
   }
@@ -82,13 +82,7 @@ function ClockInContent() {
   const [selectedCreators, setSelectedCreators] = useState<number[]>([]);
   const [loadingCreators, setLoadingCreators] = useState(false);
 
-  useEffect(() => {
-    if (userId) {
-      fetchRandomQuestion();
-    }
-  }, [userId]);
-
-  const fetchRandomQuestion = async () => {
+  const fetchRandomQuestion = useCallback(async () => {
     try {
       const response = await fetch('/api/quiz/random');
       if (response.ok) {
@@ -105,7 +99,7 @@ function ClockInContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const fetchCreators = async () => {
     setLoadingCreators(true);
@@ -121,6 +115,12 @@ function ClockInContent() {
       setLoadingCreators(false);
     }
   };
+
+  useEffect(() => {
+    if (userId) {
+      fetchRandomQuestion();
+    }
+  }, [userId, fetchRandomQuestion]);
 
   const handleCreatorToggle = (creatorId: number) => {
     setSelectedCreators(prev =>
@@ -139,7 +139,7 @@ function ClockInContent() {
   const handleQuizSuccess = async () => {
     // Record quiz attempt first
     try {
-      const attemptResponse = await fetch('/api/quiz/attempt', {
+      await fetch('/api/quiz/attempt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -234,7 +234,7 @@ function ClockInContent() {
           ) : showCreatorSelection ? (
             <div>
               <h2 className="text-lg font-medium text-gray-900 mb-6 text-center">
-                Select Creators You're Working On
+                Select Creators You&apos;re Working On
               </h2>
 
               {loadingCreators ? (
@@ -256,7 +256,7 @@ function ClockInContent() {
               ) : (
                 <div>
                   <p className="text-sm text-gray-600 mb-4">
-                    Select all creators you'll be working on today. This determines tip assignment.
+                    Select all creators you&apos;ll be working on today. This determines tip assignment.
                   </p>
 
                   <div className="space-y-3 mb-6">

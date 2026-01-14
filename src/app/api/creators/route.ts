@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { creators } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -19,10 +19,11 @@ export async function GET() {
     return NextResponse.json({
       creators: creatorsList
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching creators:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch creators: ${error.message || 'Unknown'}` },
+      { error: `Failed to fetch creators: ${message}` },
       { status: 400 }
     );
   }

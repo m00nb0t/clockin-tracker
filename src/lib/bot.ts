@@ -24,7 +24,7 @@ bot.use(session({
 // Helper functions
 async function getEmployeeByTelegramId(telegramId: string, username?: string | null) {
   // 1. Try finding by numeric ID (The "Lock")
-  let employee = await db.select().from(employees).where(eq(employees.telegramId, telegramId)).limit(1);
+  const employee = await db.select().from(employees).where(eq(employees.telegramId, telegramId)).limit(1);
   
   if (employee[0]) {
     return employee[0];
@@ -33,7 +33,7 @@ async function getEmployeeByTelegramId(telegramId: string, username?: string | n
   // 2. If not found by ID, try finding by username (The "Handshake")
   if (username) {
     const cleanUsername = username.replace('@', '').trim();
-    let usernameEmployee = await db.select().from(employees).where(eq(employees.telegramId, cleanUsername)).limit(1);
+    const usernameEmployee = await db.select().from(employees).where(eq(employees.telegramId, cleanUsername)).limit(1);
     
     if (usernameEmployee[0]) {
       // CONVERSION: Update the record with the numeric ID forever
@@ -407,7 +407,7 @@ async function getEmployeeStats(employeeId: number, period: 'today' | 'week' | '
   const now = new Date();
   const nowGmt8 = new Date(now.getTime() + (8 * 60 * 60 * 1000));
   let startDate: Date;
-  let endDate: Date = nowGmt8;
+  const endDate: Date = nowGmt8;
   let periodLabel: string;
 
   switch (period) {

@@ -124,10 +124,11 @@ export async function GET(request: NextRequest) {
       total: creators.length,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching Fanvue creators:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch creators from Fanvue API: ${error.message || 'Unknown'}` },
+      { error: `Failed to fetch creators from Fanvue API: ${message}` },
       { status: 400 }
     );
   }

@@ -22,8 +22,9 @@ export async function POST(request: NextRequest) {
     const token = generateAdminToken();
 
     return NextResponse.json({ token });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Admin login error:', error);
-    return NextResponse.json({ error: `Login failed: ${error.message || 'Unknown error'}` }, { status: 400 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: `Login failed: ${message}` }, { status: 400 });
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Employee {
   id: number;
@@ -31,11 +31,7 @@ export default function EmployeeManagement({ token }: { token: string }) {
     active: true,
   });
 
-  useEffect(() => {
-    fetchEmployees();
-  }, [token]);
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/employees', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -49,7 +45,11 @@ export default function EmployeeManagement({ token }: { token: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

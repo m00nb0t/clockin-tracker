@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 
 interface Creator {
   id: number;
@@ -37,7 +38,7 @@ export default function CreatorManagement({ token }: { token: string }) {
   const [showFanvueImport, setShowFanvueImport] = useState(false);
   const [editingCreator, setEditingCreator] = useState<Creator | null>(null);
   const [bulkImportText, setBulkImportText] = useState('');
-  const [bulkImportResults, setBulkImportResults] = useState<any>(null);
+  const [bulkImportResults, setBulkImportResults] = useState<{ results?: { successful?: unknown[]; failed?: unknown[] }; message?: string } | null>(null);
   const [fanvueCreators, setFanvueCreators] = useState<FanvueCreator[]>([]);
   const [selectedFanvueCreators, setSelectedFanvueCreators] = useState<Set<string>>(new Set());
   const [fanvueLoading, setFanvueLoading] = useState(false);
@@ -48,11 +49,7 @@ export default function CreatorManagement({ token }: { token: string }) {
     active: true,
   });
 
-  useEffect(() => {
-    fetchCreators();
-  }, [token]);
-
-  const fetchCreators = async () => {
+  const fetchCreators = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/creators', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -66,7 +63,11 @@ export default function CreatorManagement({ token }: { token: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchCreators();
+  }, [fetchCreators]);
 
   const fetchFanvueCreators = async () => {
     setFanvueLoading(true);
@@ -115,8 +116,8 @@ export default function CreatorManagement({ token }: { token: string }) {
         resetForm();
         alert(editingCreator ? 'Creator updated successfully!' : 'Creator added successfully!');
       } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to save creator');
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to save creator');
       }
     } catch (error) {
       console.error('Error saving creator:', error);
@@ -144,7 +145,7 @@ export default function CreatorManagement({ token }: { token: string }) {
       let importData;
       try {
         importData = JSON.parse(bulkImportText);
-      } catch (error) {
+      } catch {
         alert('Invalid JSON format. Please check your data.');
         return;
       }
@@ -596,10 +597,13 @@ export default function CreatorManagement({ token }: { token: string }) {
                                   />
                                   <div className="ml-3 flex items-center flex-1">
                                     <div className="flex-shrink-0">
-                                      <img
+                                      <Image
                                         src={creator.avatarUrl}
                                         alt={creator.displayName}
+                                        width={40}
+                                        height={40}
                                         className="h-10 w-10 rounded-full"
+                                        unoptimized
                                         onError={(e) => {
                                           e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNFNUU3RUIiLz4KPHBhdGggZD0iTTIwIDIwQzIyLjc2MTQgMjAgMjUgMTcuNzYxNCAyNSAxNUMyNSAxMi4yMzg2IDIyLjc2MTQgMTAgMjAgMTBDMTcuMjM4NiAxMCAxNSAxMi4yMzg2IDE1IDE1QzE1IDE3Ljc2MTQgMTcgMjAuMjM4NiAxNyAyMEMyMC41NjE0IDIwIDIwLjIzODYgMjAgMjAgMjBaIiBmaWxsPSIjOUI5QkE0Ii8+Cjwvc3ZnPgo=';
                                         }}

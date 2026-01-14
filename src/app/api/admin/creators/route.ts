@@ -58,10 +58,11 @@ export async function GET(request: NextRequest) {
       limit,
       offset,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching creators:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch creators: ${error.message || 'Unknown error'}` },
+      { error: `Failed to fetch creators: ${message}` },
       { status: 400 }
     );
   }
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
   }
 
   return handleSingleCreate(request);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in POST /api/admin/creators:', error);
     if (error instanceof Error && error.message === 'Admin access required') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
@@ -89,7 +90,8 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && error.message === 'Authentication required') {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
-    return NextResponse.json({ error: `Internal server error: ${error.message || 'Unknown'}` }, { status: 400 });
+    const message = error instanceof Error ? error.message : 'Unknown';
+    return NextResponse.json({ error: `Internal server error: ${message}` }, { status: 400 });
   }
 }
 
@@ -112,8 +114,8 @@ async function handleBulkImport(request: NextRequest) {
     }
 
     const results = {
-      successful: [] as any[],
-      failed: [] as { data: any; error: string }[],
+      successful: [] as { id: number; name: string; fanvueUuid: string | null; platform: string; active: boolean; createdAt: Date }[],
+      failed: [] as { data: { name: string; fanvueUuid?: string; platform: string; active?: boolean }; error: string }[],
     };
 
     for (let i = 0; i < creatorsData.length; i++) {
@@ -174,12 +176,13 @@ async function handleBulkImport(request: NextRequest) {
           })
           .returning();
 
-        results.successful.push(result[0]);
+        results.successful.push(result[0] as { id: number; name: string; fanvueUuid: string | null; platform: string; active: boolean; createdAt: Date });
 
-      } catch (error: any) {
+      } catch (innerError: unknown) {
+        const message = innerError instanceof Error ? innerError.message : 'Unknown error';
         results.failed.push({
           data: creatorData,
-          error: error.message || 'Unknown error'
+          error: message
         });
       }
     }
@@ -189,10 +192,11 @@ async function handleBulkImport(request: NextRequest) {
       results
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in bulk import:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to process bulk import: ${error.message || 'Unknown error'}` },
+      { error: `Failed to process bulk import: ${message}` },
       { status: 400 }
     );
   }
@@ -251,10 +255,11 @@ async function handleSingleCreate(request: NextRequest) {
       .returning();
 
     return NextResponse.json(result[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating creator:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to create creator: ${error.message || 'Unknown error'}` },
+      { error: `Failed to create creator: ${message}` },
       { status: 400 }
     );
   }

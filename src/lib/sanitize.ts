@@ -17,7 +17,7 @@ export function sanitizeString(input: string | undefined | null, maxLength: numb
   return sanitized;
 }
 
-export function sanitizeNumber(input: any, min: number = 0, max: number = Number.MAX_SAFE_INTEGER): number | null {
+export function sanitizeNumber(input: unknown, min: number = 0, max: number = Number.MAX_SAFE_INTEGER): number | null {
   const num = Number(input);
   if (isNaN(num) || num < min || num > max) {
     return null;

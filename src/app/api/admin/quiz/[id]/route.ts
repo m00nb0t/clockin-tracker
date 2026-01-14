@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizQuestions, quizAttempts } from '@/lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { requireAdminDashboard } from '@/lib/auth';
 
 // GET /api/admin/quiz/[id] - Get single quiz question
@@ -29,10 +29,11 @@ export async function GET(
     }
 
     return NextResponse.json(question[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching quiz question:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch quiz question: ${error.message || 'Unknown error'}` },
+      { error: `Failed to fetch quiz question: ${message}` },
       { status: 400 }
     );
   }
@@ -88,10 +89,11 @@ export async function PUT(
     }
 
     return NextResponse.json(result[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating quiz question:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to update quiz question: ${error.message || 'Unknown error'}` },
+      { error: `Failed to update quiz question: ${message}` },
       { status: 400 }
     );
   }
@@ -151,10 +153,11 @@ export async function DELETE(
         message: 'Question deleted permanently'
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deleting quiz question:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to delete quiz question: ${error.message || 'Unknown error'}` },
+      { error: `Failed to delete quiz question: ${message}` },
       { status: 400 }
     );
   }

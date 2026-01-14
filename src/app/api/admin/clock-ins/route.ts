@@ -54,9 +54,10 @@ export async function GET(request: NextRequest) {
       clockIns: clockInsList,
       total: totalResult[0].count,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching clock-ins:', error);
-    return NextResponse.json({ error: `Failed to fetch shift history: ${error.message || 'Unknown error'}` }, { status: 400 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: `Failed to fetch shift history: ${message}` }, { status: 400 });
   }
 }
 

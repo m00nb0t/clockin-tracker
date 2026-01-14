@@ -68,8 +68,9 @@ export async function GET() {
       dayNumber: daysSinceStart,
       totalQuestions: questions.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching daily question:', error);
-    return NextResponse.json({ error: `Internal server error: ${error.message || 'Unknown'}` }, { status: 400 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: `Internal server error: ${message}` }, { status: 400 });
   }
 }

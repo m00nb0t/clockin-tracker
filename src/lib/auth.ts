@@ -11,7 +11,7 @@ export interface AuthUser {
 }
 
 // Verify Telegram WebApp initData signature
-function verifyTelegramWebAppData(initData: string): any | null {
+function verifyTelegramWebAppData(initData: string): { id: number; first_name: string; last_name?: string; username?: string } | null {
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!botToken) {
@@ -167,7 +167,7 @@ export function verifyAdminToken(token: string): AdminAuth | null {
       return decoded;
     }
     return null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

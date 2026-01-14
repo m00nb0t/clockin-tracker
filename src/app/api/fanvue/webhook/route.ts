@@ -24,10 +24,15 @@ function verifyWebhookSignature(request: NextRequest, body: string): boolean {
   // Fanvue might prefix with "sha256=" like GitHub
   const cleanSignature = signature.replace('sha256=', '');
 
-  return crypto.timingSafeEqual(
-    Buffer.from(cleanSignature, 'hex'),
-    Buffer.from(expectedSignature, 'hex')
-  );
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(cleanSignature, 'hex'),
+      Buffer.from(expectedSignature, 'hex')
+    );
+  } catch (error) {
+    console.error('Signature verification failed:', error);
+    return false;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -37,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     try {
       body = JSON.parse(bodyText);
-    } catch (error) {
+    } catch {
       console.error('Invalid JSON in webhook request');
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }
@@ -171,10 +176,11 @@ export async function POST(request: NextRequest) {
           employee: activeEmployee.employeeName,
           amount: tipAmount
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Transaction failed:', error);
+        const message = error instanceof Error ? error.message : 'Unknown';
         return NextResponse.json(
-          { error: `Failed to process tip assignment: ${error.message || 'Unknown'}` },
+          { error: `Failed to process tip assignment: ${message}` },
           { status: 400 }
         );
       }
@@ -192,10 +198,11 @@ export async function POST(request: NextRequest) {
           context,
           status: 'unassigned',
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Failed to record unassigned tip:', error);
+        const message = error instanceof Error ? error.message : 'Unknown';
         return NextResponse.json(
-          { error: `Failed to record unassigned tip: ${error.message || 'Unknown'}` },
+          { error: `Failed to record unassigned tip: ${message}` },
           { status: 400 }
         );
       }
@@ -226,10 +233,11 @@ export async function POST(request: NextRequest) {
         amount: tipAmount
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Fanvue webhook error:', error);
+    const message = error instanceof Error ? error.message : 'Unknown';
     return NextResponse.json(
-      { error: `Internal server error: ${error.message || 'Unknown'}` },
+      { error: `Internal server error: ${message}` },
       { status: 400 }
     );
   }

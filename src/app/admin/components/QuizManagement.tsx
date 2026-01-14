@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface QuizQuestion {
   id: number;
@@ -57,12 +57,7 @@ export default function QuizManagement({ token }: { token: string }) {
     timezone: 'Asia/Shanghai',
   });
 
-  useEffect(() => {
-    fetchQuestions();
-    fetchSettings();
-  }, [token]);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/quiz/settings', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -78,9 +73,9 @@ export default function QuizManagement({ token }: { token: string }) {
     } catch (error) {
       console.error('Error fetching quiz settings:', error);
     }
-  };
+  }, [token]);
 
-  const fetchQuestions = async () => {
+  const fetchQuestions = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/quiz', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -94,7 +89,12 @@ export default function QuizManagement({ token }: { token: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchQuestions();
+    fetchSettings();
+  }, [fetchQuestions, fetchSettings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,7 +206,7 @@ export default function QuizManagement({ token }: { token: string }) {
       correctAnswer: 'A',
       explanation: '',
       active: true,
-    } as any);
+    });
   };
 
   if (loading) {

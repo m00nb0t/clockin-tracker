@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface SalesEntry {
   id: number;
@@ -45,7 +45,6 @@ export default function SalesManagement({ token }: { token: string }) {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingSale, setEditingSale] = useState<SalesEntry | null>(null);
-  const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState<SalesFilters>({
     employeeId: '',
     category: '',
@@ -62,12 +61,7 @@ export default function SalesManagement({ token }: { token: string }) {
     description: '',
   });
 
-  useEffect(() => {
-    fetchEmployees();
-    fetchSales();
-  }, [filters, token]);
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/employees', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -79,9 +73,9 @@ export default function SalesManagement({ token }: { token: string }) {
     } catch (error) {
       console.error('Error fetching employees:', error);
     }
-  };
+  }, [token]);
 
-  const fetchSales = async () => {
+  const fetchSales = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (filters.employeeId) params.append('employeeId', filters.employeeId);
@@ -96,14 +90,18 @@ export default function SalesManagement({ token }: { token: string }) {
       if (response.ok) {
         const data = await response.json();
         setSales(data.sales);
-        setTotal(data.total);
       }
     } catch (error) {
       console.error('Error fetching sales:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, token]);
+
+  useEffect(() => {
+    fetchEmployees();
+    fetchSales();
+  }, [fetchEmployees, fetchSales]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

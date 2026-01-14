@@ -76,10 +76,11 @@ export async function GET(request: NextRequest) {
       limit,
       offset,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching sales:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch sales: ${error.message || 'Unknown error'}` },
+      { error: `Failed to fetch sales: ${message}` },
       { status: 400 }
     );
   }
@@ -144,10 +145,11 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json(result[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating sales entry:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to create sales entry: ${error.message || 'Unknown error'}` },
+      { error: `Failed to create sales entry: ${message}` },
       { status: 400 }
     );
   }

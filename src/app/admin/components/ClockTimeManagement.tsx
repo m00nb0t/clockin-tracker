@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface ClockInRecord {
   id: number;
@@ -27,12 +27,7 @@ export default function ClockTimeManagement({ token }: { token: string }) {
     endDate: '',
   });
 
-  useEffect(() => {
-    fetchEmployees();
-    fetchClockIns();
-  }, [filters, token]);
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/employees', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -44,9 +39,9 @@ export default function ClockTimeManagement({ token }: { token: string }) {
     } catch (error) {
       console.error('Error fetching employees:', error);
     }
-  };
+  }, [token]);
 
-  const fetchClockIns = async () => {
+  const fetchClockIns = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (filters.employeeId) params.append('employeeId', filters.employeeId);
@@ -65,7 +60,12 @@ export default function ClockTimeManagement({ token }: { token: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, token]);
+
+  useEffect(() => {
+    fetchEmployees();
+    fetchClockIns();
+  }, [fetchEmployees, fetchClockIns]);
 
   const formatDateTime = (dateStr: string | null) => {
     if (!dateStr) return '-';

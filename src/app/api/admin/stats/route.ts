@@ -64,8 +64,9 @@ export async function GET(request: NextRequest) {
       thisWeekHours,
       thisWeekSales,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching admin stats:', error);
-    return NextResponse.json({ error: `Failed to fetch stats: ${error.message || 'Unknown error'}` }, { status: 400 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: `Failed to fetch stats: ${message}` }, { status: 400 });
   }
 }

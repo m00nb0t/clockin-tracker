@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     // Require user authentication
     const authUser = await requireUser(request);
 
-    const { questionId, selectedAnswer, correct, attemptNumber } = await request.json();
+    const { questionId, selectedAnswer, correct } = await request.json();
 
     if (!questionId || !selectedAnswer) {
       return NextResponse.json(
@@ -56,10 +56,11 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json(result[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error recording quiz attempt:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to record quiz attempt: ${error.message || 'Unknown error'}` },
+      { error: `Failed to record quiz attempt: ${message}` },
       { status: 400 }
     );
   }
@@ -97,10 +98,11 @@ export async function GET(request: NextRequest) {
       .orderBy(quizAttempts.attemptNumber);
 
     return NextResponse.json(attempts);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching quiz attempts:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch quiz attempts: ${error.message || 'Unknown error'}` },
+      { error: `Failed to fetch quiz attempts: ${message}` },
       { status: 400 }
     );
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { employees, admins, clockIns, sales, quizAttempts } from '@/lib/db/schema';
+import { employees, admins } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { requireAdminDashboard } from '@/lib/auth';
 
@@ -37,10 +37,11 @@ export async function GET(
     }
 
     return NextResponse.json(employee[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching employee:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch employee: ${error.message || 'Unknown error'}` },
+      { error: `Failed to fetch employee: ${message}` },
       { status: 400 }
     );
   }
@@ -99,10 +100,11 @@ export async function PUT(
     }
 
     return NextResponse.json(result[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating employee:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to update employee: ${error.message || 'Unknown error'}` },
+      { error: `Failed to update employee: ${message}` },
       { status: 400 }
     );
   }
@@ -143,10 +145,11 @@ export async function DELETE(
       success: true,
       message: 'Employee deactivated successfully'
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deactivating employee:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to deactivate employee: ${error.message || 'Unknown error'}` },
+      { error: `Failed to deactivate employee: ${message}` },
       { status: 400 }
     );
   }

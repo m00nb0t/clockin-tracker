@@ -20,10 +20,11 @@ export async function POST(request: NextRequest) {
         telegramId: user.telegramId,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Admin verification error:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Auth failed: ${error.message || 'Unknown error'}`, isAdmin: false },
+      { error: `Auth failed: ${message}`, isAdmin: false },
       { status: 400 }
     );
   }

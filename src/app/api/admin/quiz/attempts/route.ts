@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizAttempts, employees, quizQuestions } from '@/lib/db/schema';
-import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { requireAdminDashboard } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -66,9 +66,10 @@ export async function GET(request: NextRequest) {
         rate: statsResult[0].total > 0 ? (statsResult[0].correct / statsResult[0].total) * 100 : 0
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching quiz attempts:', error);
-    return NextResponse.json({ error: `Failed to fetch quiz results: ${error.message || 'Unknown error'}` }, { status: 400 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: `Failed to fetch quiz results: ${message}` }, { status: 400 });
   }
 }
 

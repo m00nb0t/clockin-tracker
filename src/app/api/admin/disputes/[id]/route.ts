@@ -46,7 +46,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         status,
         resolution: resolution.trim(),
         resolvedBy: resolverId,
-        resolvedAt: new Date() as any, // Force type for now
+        resolvedAt: new Date(),
       })
       .where(eq(tipDisputes.id, disputeId))
       .returning();
@@ -59,10 +59,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     return NextResponse.json(result[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error resolving dispute:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to resolve dispute: ${error.message || 'Unknown error'}` },
+      { error: `Failed to resolve dispute: ${message}` },
       { status: 400 }
     );
   }

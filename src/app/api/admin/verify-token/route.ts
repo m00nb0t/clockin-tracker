@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     // Verify admin token
     requireAdminDashboard(request);
     return NextResponse.json({ valid: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ valid: false }, { status: 401 });
   }
 }

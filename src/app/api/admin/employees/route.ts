@@ -24,10 +24,11 @@ export async function GET(request: NextRequest) {
       .orderBy(employees.createdAt);
 
     return NextResponse.json(employeeList);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching employees:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch employees: ${error.message || 'Unknown error'}` },
+      { error: `Failed to fetch employees: ${message}` },
       { status: 400 }
     );
   }
@@ -74,10 +75,11 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json(result[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating employee:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to create employee: ${error.message || 'Unknown error'}` },
+      { error: `Failed to create employee: ${message}` },
       { status: 400 }
     );
   }

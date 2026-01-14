@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizQuestions } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { desc, sql } from 'drizzle-orm';
 import { requireAdminDashboard } from '@/lib/auth';
 
 // GET /api/admin/quiz - List all quiz questions
@@ -16,10 +16,11 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(quizQuestions.createdAt));
 
     return NextResponse.json(questions);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching quiz questions:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch quiz questions: ${error.message || 'Unknown error'}` },
+      { error: `Failed to fetch quiz questions: ${message}` },
       { status: 400 }
     );
   }
@@ -71,10 +72,11 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json(result[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating quiz question:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to create quiz question: ${error.message || 'Unknown error'}` },
+      { error: `Failed to create quiz question: ${message}` },
       { status: 400 }
     );
   }

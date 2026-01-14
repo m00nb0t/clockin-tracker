@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface QuizAttempt {
   id: number;
@@ -24,11 +24,7 @@ export default function QuizResponses({ token }: { token: string }) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchAttempts();
-  }, [token]);
-
-  const fetchAttempts = async () => {
+  const fetchAttempts = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/quiz/attempts', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -43,7 +39,11 @@ export default function QuizResponses({ token }: { token: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchAttempts();
+  }, [fetchAttempts]);
 
   if (loading) {
     return <div className="p-6">Loading quiz results...</div>;

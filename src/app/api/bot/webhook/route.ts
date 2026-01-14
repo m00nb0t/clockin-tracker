@@ -3,7 +3,7 @@ import bot from '@/lib/bot';
 import crypto from 'crypto';
 
 // Verify Telegram webhook signature
-function verifyTelegramWebhook(request: NextRequest, body: string): boolean {
+function verifyTelegramWebhook(request: NextRequest): boolean {
   const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET;
   if (!secretToken) {
     console.warn('TELEGRAM_WEBHOOK_SECRET not configured - webhook verification disabled');
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const bodyText = await request.text();
 
     // Verify webhook signature
-    if (!verifyTelegramWebhook(request, bodyText)) {
+    if (!verifyTelegramWebhook(request)) {
       console.warn('Invalid webhook signature');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
@@ -35,9 +35,10 @@ export async function POST(request: NextRequest) {
     const body = JSON.parse(bodyText);
     await bot.handleUpdate(body);
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Webhook error:', error);
-    return NextResponse.json({ error: `Internal server error: ${error.message || 'Unknown'}` }, { status: 400 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: `Internal server error: ${message}` }, { status: 400 });
   }
 }
 

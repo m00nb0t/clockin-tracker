@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { requireAdminDashboard } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
@@ -12,10 +11,11 @@ export async function POST(request: NextRequest) {
       message: 'Use npm run db:push instead of this endpoint',
       command: 'npm run db:push'
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Migration error:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Migration failed', details: error.message || 'Unknown error' },
+      { error: 'Migration failed', details: message },
       { status: 400 }
     );
   }

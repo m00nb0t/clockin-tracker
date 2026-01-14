@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { tipDisputes, fanvueTips, employees, creators, admins } from '@/lib/db/schema';
+import { tipDisputes, fanvueTips, employees, creators } from '@/lib/db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { requireAdminDashboard } from '@/lib/auth';
 
@@ -14,13 +14,12 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    let whereConditions = [];
+    const whereConditions = [];
 
     if (status) {
       whereConditions.push(eq(tipDisputes.status, status));
     }
 
-    const resolverAlias = sql`resolver_employees`;
     const disputesList = await db
       .select({
         id: tipDisputes.id,
@@ -47,10 +46,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       disputes: disputesList,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching disputes:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch disputes: ${error.message || 'Unknown error'}` },
+      { error: `Failed to fetch disputes: ${message}` },
       { status: 400 }
     );
   }

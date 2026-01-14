@@ -32,10 +32,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     return NextResponse.json(result[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching creator:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch creator: ${error.message || 'Unknown error'}` },
+      { error: `Failed to fetch creator: ${message}` },
       { status: 400 }
     );
   }
@@ -118,10 +119,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     return NextResponse.json(result[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating creator:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to update creator: ${error.message || 'Unknown error'}` },
+      { error: `Failed to update creator: ${message}` },
       { status: 400 }
     );
   }
@@ -164,10 +166,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       success: true,
       message: 'Creator deactivated successfully'
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deactivating creator:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to deactivate creator: ${error.message || 'Unknown error'}` },
+      { error: `Failed to deactivate creator: ${message}` },
       { status: 400 }
     );
   }

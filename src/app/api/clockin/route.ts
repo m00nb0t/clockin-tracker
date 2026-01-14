@@ -105,8 +105,9 @@ export async function POST(request: NextRequest) {
       clockInId,
       creatorsSelected: creatorIds?.length || 0
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Clock-in error:', error);
-    return NextResponse.json({ error: `Internal server error: ${error.message || 'Unknown'}` }, { status: 400 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: `Internal server error: ${message}` }, { status: 400 });
   }
 }
