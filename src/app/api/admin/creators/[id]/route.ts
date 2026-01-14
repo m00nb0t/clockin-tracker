@@ -100,7 +100,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Update creator
-    const result = await db
+    await db
       .update(creators)
       .set({
         name: name.trim(),
@@ -108,9 +108,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         platform,
         active: active !== undefined ? active : true,
       })
-      .where(eq(creators.id, creatorId))
-      .returning();
+      .where(eq(creators.id, creatorId));
 
+    const result = await db.select().from(creators).where(eq(creators.id, creatorId)).limit(1);
+    
     if (!result[0]) {
       return NextResponse.json(
         { error: 'Creator not found' },
@@ -145,18 +146,10 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     // Soft delete by setting active to false
-    const result = await db
+    await db
       .update(creators)
       .set({ active: false })
-      .where(eq(creators.id, creatorId))
-      .returning();
-
-    if (!result[0]) {
-      return NextResponse.json(
-        { error: 'Creator not found' },
-        { status: 404 }
-      );
-    }
+      .where(eq(creators.id, creatorId));
 
     return NextResponse.json({
       success: true,

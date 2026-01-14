@@ -64,16 +64,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Create employee
-    const result = await db
+    await db
       .insert(employees)
       .values({
         name: name.trim(),
         telegramId: telegramId.trim(),
         role: 'employee',
         active: true,
-      })
-      .returning();
+      });
 
+    const result = await db.select().from(employees).where(eq(employees.telegramId, telegramId)).limit(1);
     return NextResponse.json(result[0]);
   } catch (error: unknown) {
     console.error('Error creating employee:', error);

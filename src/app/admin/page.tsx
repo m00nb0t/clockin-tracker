@@ -294,8 +294,8 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Week Hours</p>
-                    <p className="text-2xl font-semibold text-gray-900">{(stats?.thisWeekHours || 0).toFixed(1)}h</p>
+                    <p className="text-sm font-medium text-gray-600">Weekly Total</p>
+                    <p className="text-2xl font-semibold text-gray-900">{stats?.thisWeekHours ? Math.round(stats.thisWeekHours * 10) / 10 : 0}h</p>
                   </div>
                 </div>
               </div>

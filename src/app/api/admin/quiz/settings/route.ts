@@ -11,20 +11,31 @@ export async function GET(request: NextRequest) {
     // Require admin authentication
     requireAdminDashboard(request);
     const settings = await db
-      .select()
+      .select({
+        id: quizSettings.id,
+        startDate: quizSettings.startDate,
+        timezone: quizSettings.timezone,
+        updatedAt: quizSettings.updatedAt,
+      })
       .from(quizSettings)
       .orderBy(desc(quizSettings.updatedAt))
       .limit(1);
 
     if (settings.length === 0) {
       // Create default settings
-      const defaultSettings = await db
+      await db
         .insert(quizSettings)
         .values({
           startDate: formatGmt8Date(), // Today
           timezone: 'Asia/Shanghai',
-        })
-        .returning();
+        });
+
+      const defaultSettings = await db.select({
+        id: quizSettings.id,
+        startDate: quizSettings.startDate,
+        timezone: quizSettings.timezone,
+        updatedAt: quizSettings.updatedAt,
+      }).from(quizSettings).limit(1);
 
       return NextResponse.json(defaultSettings[0]);
     }
@@ -74,8 +85,13 @@ export async function PUT(request: NextRequest) {
         })
         .where(eq(quizSettings.id, existing[0].id));
       
-      // Fetch the updated record instead of using .returning()
-      const updated = await db.select().from(quizSettings).where(eq(quizSettings.id, existing[0].id)).limit(1);
+      // Fetch the updated record
+      const updated = await db.select({
+        id: quizSettings.id,
+        startDate: quizSettings.startDate,
+        timezone: quizSettings.timezone,
+        updatedAt: quizSettings.updatedAt,
+      }).from(quizSettings).where(eq(quizSettings.id, existing[0].id)).limit(1);
       result = updated;
     } else {
       // Insert new settings
@@ -87,7 +103,12 @@ export async function PUT(request: NextRequest) {
         });
       
       // Fetch the new record
-      const inserted = await db.select().from(quizSettings).orderBy(desc(quizSettings.id)).limit(1);
+      const inserted = await db.select({
+        id: quizSettings.id,
+        startDate: quizSettings.startDate,
+        timezone: quizSettings.timezone,
+        updatedAt: quizSettings.updatedAt,
+      }).from(quizSettings).orderBy(desc(quizSettings.id)).limit(1);
       result = inserted;
     }
 

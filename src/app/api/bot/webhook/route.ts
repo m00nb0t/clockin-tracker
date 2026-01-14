@@ -1,47 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bot from '@/lib/bot';
 import crypto from 'crypto';
+import { webhookCallback } from 'grammy';
 
-// Verify Telegram webhook signature
 function verifyTelegramWebhook(request: NextRequest): boolean {
   const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!secretToken) {
-    console.warn('TELEGRAM_WEBHOOK_SECRET not configured - webhook verification disabled');
-    return true; // Allow in development, but log warning
-  }
+  if (!secretToken) return true; 
 
   const signature = request.headers.get('x-telegram-bot-api-secret-token');
-  if (!signature) {
-    console.warn('Missing webhook signature');
+  if (!signature || signature.length !== secretToken.length) return false;
+
+  try {
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(secretToken));
+  } catch (error) {
     return false;
   }
-
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(secretToken)
-  );
 }
+
+const handleUpdate = webhookCallback(bot, 'next-js');
 
 export async function POST(request: NextRequest) {
   try {
-    const bodyText = await request.text();
-
-    // Verify webhook signature
-    if (!verifyTelegramWebhook(request)) {
-      console.warn('Invalid webhook signature');
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    }
-
-    const body = JSON.parse(bodyText);
-    await bot.handleUpdate(body);
-    return NextResponse.json({ ok: true });
-  } catch (error: unknown) {
+    if (!verifyTelegramWebhook(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return await handleUpdate(request);
+  } catch (error: any) {
     console.error('Webhook error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: `Internal server error: ${message}` }, { status: 400 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 export async function GET() {
-  return NextResponse.json({ message: 'ClockIn Tracker Bot Webhook' });
+  return NextResponse.json({ ok: true });
 }

@@ -42,13 +42,27 @@ export async function GET(request: NextRequest) {
     weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
     const weekEndStr = weekEnd.toISOString().split('T')[0];
 
-    const weekHoursResult = await db.select({ total: sql<number>`coalesce(sum(${clockIns.totalHours}), 0)` })
+    const weekHoursData = await db.select({ 
+        totalHours: clockIns.totalHours,
+        clockInTime: clockIns.clockInTime,
+        clockOutTime: clockIns.clockOutTime 
+      })
       .from(clockIns)
       .where(and(
         gte(clockIns.date, weekStartStr),
         lte(clockIns.date, weekEndStr)
       ));
-    const thisWeekHours = weekHoursResult[0].total;
+    
+    const thisWeekHours = weekHoursData.reduce((sum, clock) => {
+      if (clock.totalHours) return sum + clock.totalHours;
+      if (!clock.clockOutTime) {
+        const start = new Date(clock.clockInTime);
+        const now = new Date(); // USE UTC for duration calculation (UTC - UTC)
+        const active = Math.max(0, Math.round((now.getTime() - start.getTime()) / (1000 * 60 * 60) * 10) / 10);
+        return sum + active;
+      }
+      return sum;
+    }, 0);
 
     const weekSalesResult = await db.select({ total: sql<number>`coalesce(sum(${sales.amount}), 0)` })
       .from(sales)
@@ -69,6 +83,9 @@ export async function GET(request: NextRequest) {
   } catch (error: unknown) {
     console.error('Error fetching admin stats:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: `Failed to fetch stats: ${message}` }, { status: 400 });
+    return NextResponse.json(
+      { error: `Failed to fetch stats: ${message}` },
+      { status: 500 }
+    );
   }
 }

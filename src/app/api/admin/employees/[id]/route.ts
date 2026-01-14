@@ -84,7 +84,7 @@ export async function PUT(
     }
 
     // Update employee
-    const result = await db
+    await db
       .update(employees)
       .set({
         name: name.trim(),
@@ -92,8 +92,9 @@ export async function PUT(
         role: role || 'employee',
         active: active !== undefined ? active : true,
       })
-      .where(eq(employees.id, employeeId))
-      .returning();
+      .where(eq(employees.id, employeeId));
+
+    const result = await db.select().from(employees).where(eq(employees.id, employeeId)).limit(1);
 
     if (!result[0]) {
       return NextResponse.json(
@@ -139,14 +140,40 @@ export async function DELETE(
     }
 
     // Soft delete by setting active to false
-    await db
-      .update(employees)
-      .set({ active: false })
-      .where(eq(employees.id, employeeId));
+    await db.transaction(async (tx) => {
+      // 1. Deactivate employee
+      await tx
+        .update(employees)
+        .set({ active: false })
+        .where(eq(employees.id, employeeId));
+      
+      // 2. Check for and close any active shifts
+      const activeShifts = await tx
+        .select()
+        .from(clockIns)
+        .where(and(
+          eq(clockIns.employeeId, employeeId),
+          sql`${clockIns.clockOutTime} IS NULL`
+        ));
+      
+      for (const shift of activeShifts) {
+        const clockInTime = new Date(shift.clockInTime);
+        const clockOutTime = new Date();
+        const totalHours = Math.max(0, Math.round((clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60) * 100) / 100);
+        
+        await tx
+          .update(clockIns)
+          .set({
+            clockOutTime,
+            totalHours,
+          })
+          .where(eq(clockIns.id, shift.id));
+      }
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Employee deactivated successfully'
+      message: 'Employee deactivated successfully and active shifts closed'
     });
   } catch (error: unknown) {
     console.error('Error deactivating employee:', error);

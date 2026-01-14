@@ -86,8 +86,9 @@ export async function authenticateRequest(request: Request): Promise<AuthUser | 
       .where(eq(employees.telegramId, telegramUser.id.toString()))
       .limit(1);
 
-    // If not found by ID, try handshake with username
+    // If not found by numeric ID, try handshake with username
     if (!employeeResult[0] && telegramUser.username) {
+      const username = telegramUser.username.replace('@', '').trim();
       const usernameEmployee = await db
         .select({
           id: employees.id,
@@ -98,14 +99,17 @@ export async function authenticateRequest(request: Request): Promise<AuthUser | 
         })
         .from(employees)
         .leftJoin(admins, eq(employees.id, admins.employeeId))
-        .where(eq(employees.telegramId, telegramUser.username.replace('@', '').trim()))
+        .where(eq(employees.telegramId, username))
         .limit(1);
 
       if (usernameEmployee[0]) {
-        // CONVERSION: Update record with numeric ID
+        // CONVERSION: Update record with numeric ID forever.
+        // This only runs ONCE per employee because the next call will find them by numeric ID.
         await db.update(employees)
           .set({ telegramId: telegramUser.id.toString() })
           .where(eq(employees.id, usernameEmployee[0].id));
+        
+        console.log(`Handshake successful: Linked username ${username} to ID ${telegramUser.id}`);
         
         employeeResult = [{
           ...usernameEmployee[0],

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizQuestions, quizSettings } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { getGmt8Date } from '@/lib/dateUtils';
 
 
@@ -45,8 +45,34 @@ export async function GET() {
     }
 
     // Calculate which question should be active today
-    const questionIndex = Math.max(0, (daysSinceStart - 1) % questions.length); // Ensure non-negative
-    const todaysQuestion = questions[questionIndex];
+    // We use the dayNumber to select the sequenceNumber. 
+    // This is stable: Day 1 always shows Sequence 1, regardless of how many questions exist.
+    const maxSeqResult = await db.select({ maxSeq: sql<number>`max(${quizQuestions.sequenceNumber})` }).from(quizQuestions).where(eq(quizQuestions.active, true));
+    const maxSeq = maxSeqResult[0]?.maxSeq || 1;
+    
+    const targetSequence = ((daysSinceStart - 1) % maxSeq) + 1;
+
+    const todaysQuestionResult = await db
+      .select()
+      .from(quizQuestions)
+      .where(and(
+        eq(quizQuestions.active, true),
+        eq(quizQuestions.sequenceNumber, targetSequence)
+      ))
+      .limit(1);
+    
+    let todaysQuestion = todaysQuestionResult[0];
+
+    // Fallback: If sequence number has a gap, find the nearest one
+    if (!todaysQuestion) {
+      const fallbackQuestion = await db
+        .select()
+        .from(quizQuestions)
+        .where(eq(quizQuestions.active, true))
+        .orderBy(quizQuestions.sequenceNumber)
+        .limit(1);
+      todaysQuestion = fallbackQuestion[0];
+    }
 
     if (!todaysQuestion) {
       return NextResponse.json({ error: 'No question available for today' }, { status: 404 });

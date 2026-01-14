@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create sales entry
-    const result = await db
+    await db
       .insert(sales)
       .values({
         employeeId,
@@ -141,9 +141,9 @@ export async function POST(request: NextRequest) {
         amount: parseFloat(amount),
         date,
         description: description?.trim() || null,
-      })
-      .returning();
+      });
 
+    const result = await db.select().from(sales).where(eq(sales.employeeId, employeeId)).orderBy(desc(sales.id)).limit(1);
     return NextResponse.json(result[0]);
   } catch (error: unknown) {
     console.error('Error creating sales entry:', error);

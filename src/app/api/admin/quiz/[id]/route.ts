@@ -16,7 +16,19 @@ export async function GET(
     const questionId = parseInt(id);
 
     const question = await db
-      .select()
+      .select({
+        id: quizQuestions.id,
+        sequenceNumber: quizQuestions.sequenceNumber,
+        question: quizQuestions.question,
+        optionA: quizQuestions.optionA,
+        optionB: quizQuestions.optionB,
+        optionC: quizQuestions.optionC,
+        optionD: quizQuestions.optionD,
+        correctAnswer: quizQuestions.correctAnswer,
+        explanation: quizQuestions.explanation,
+        active: quizQuestions.active,
+        createdAt: quizQuestions.createdAt,
+      })
       .from(quizQuestions)
       .where(eq(quizQuestions.id, questionId))
       .limit(1);
@@ -33,8 +45,8 @@ export async function GET(
     console.error('Error fetching quiz question:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch quiz question: ${message}` },
-      { status: 400 }
+      { error: `Database error: ${message}` },
+      { status: 500 }
     );
   }
 }
@@ -65,8 +77,8 @@ export async function PUT(
       );
     }
 
-    // Update quiz question (Sequence number is kept the same to avoid messing up the schedule)
-    const result = await db
+    // Update quiz question
+    await db
       .update(quizQuestions)
       .set({
         question: question.trim(),
@@ -78,12 +90,30 @@ export async function PUT(
         explanation: explanation?.trim() || null,
         active: active !== undefined ? active : true,
       })
+      .where(eq(quizQuestions.id, questionId));
+
+    // Fetch the updated record
+    const result = await db
+      .select({
+        id: quizQuestions.id,
+        sequenceNumber: quizQuestions.sequenceNumber,
+        question: quizQuestions.question,
+        optionA: quizQuestions.optionA,
+        optionB: quizQuestions.optionB,
+        optionC: quizQuestions.optionC,
+        optionD: quizQuestions.optionD,
+        correctAnswer: quizQuestions.correctAnswer,
+        explanation: quizQuestions.explanation,
+        active: quizQuestions.active,
+        createdAt: quizQuestions.createdAt,
+      })
+      .from(quizQuestions)
       .where(eq(quizQuestions.id, questionId))
-      .returning();
+      .limit(1);
 
     if (!result[0]) {
       return NextResponse.json(
-        { error: 'Quiz question not found' },
+        { error: 'Quiz question not found after update' },
         { status: 404 }
       );
     }
@@ -93,8 +123,8 @@ export async function PUT(
     console.error('Error updating quiz question:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to update quiz question: ${message}` },
-      { status: 400 }
+      { error: `Database error: ${message}` },
+      { status: 500 }
     );
   }
 }
@@ -157,8 +187,8 @@ export async function DELETE(
     console.error('Error deleting quiz question:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to delete quiz question: ${message}` },
-      { status: 400 }
+      { error: `Database error: ${message}` },
+      { status: 500 }
     );
   }
 }

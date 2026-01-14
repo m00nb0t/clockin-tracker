@@ -2,6 +2,7 @@ import { Bot, Context, session, SessionFlavor } from 'grammy';
 import { db } from './db';
 import { employees, clockIns, clockInCreators, sales, fanvueTips, tipDisputes, creators } from './db/schema';
 import { formatGmt8Date } from './dateUtils';
+import { eq, and, sql, desc, isNull } from 'drizzle-orm';
 
 interface SessionData {
   saleCategory?: string;
@@ -21,29 +22,53 @@ bot.use(session({
   initial: (): SessionData => ({}),
 }));
 
+// RESTORED: Error handler to prevent silent crashes on Vercel
+bot.catch((err) => {
+  const ctx = err.ctx;
+  console.error(`Error while handling update ${ctx.update.update_id}:`);
+  console.error(err.error);
+  
+  // Try to notify the user that something went wrong
+  try {
+    ctx.reply('❌ An internal error occurred. Your request could not be processed. Please try again or contact support.').catch(() => {});
+  } catch (_e) {}
+});
+
 // Helper functions
 async function getEmployeeByTelegramId(telegramId: string, username?: string | null) {
-  // 1. Try finding by numeric ID (The "Lock")
-  const employee = await db.select().from(employees).where(eq(employees.telegramId, telegramId)).limit(1);
-  
-  if (employee[0]) {
-    return employee[0];
-  }
-
-  // 2. If not found by ID, try finding by username (The "Handshake")
-  if (username) {
-    const cleanUsername = username.replace('@', '').trim();
-    const usernameEmployee = await db.select().from(employees).where(eq(employees.telegramId, cleanUsername)).limit(1);
+  try {
+    // 1. Try finding by numeric ID (The "Lock")
+    const employee = await db.select().from(employees).where(eq(employees.telegramId, telegramId)).limit(1);
     
-    if (usernameEmployee[0]) {
-      // CONVERSION: Update the record with the numeric ID forever
-      await db.update(employees)
-        .set({ telegramId: telegramId })
-        .where(eq(employees.id, usernameEmployee[0].id));
-      
-      console.log(`Handshake successful: Linked username ${cleanUsername} to ID ${telegramId}`);
-      return { ...usernameEmployee[0], telegramId };
+    if (employee[0]) {
+      return employee[0];
     }
+
+    // 2. If not found by ID, try finding by username (The "Handshake")
+    if (username) {
+      const cleanUsername = username.replace('@', '').trim();
+      const usernameEmployee = await db.select().from(employees).where(eq(employees.telegramId, cleanUsername)).limit(1);
+      
+      if (usernameEmployee[0]) {
+        // CONVERSION: Update the record with the numeric ID forever
+        // FIX: Wrap in try-catch to ignore unique constraint failures (already handled)
+        try {
+          await db.update(employees)
+            .set({ telegramId: telegramId })
+            .where(eq(employees.id, usernameEmployee[0].id));
+          
+          console.log(`Handshake successful: Linked username ${cleanUsername} to ID ${telegramId}`);
+          return { ...usernameEmployee[0], telegramId };
+        } catch (updateError) {
+          console.error('Handshake update failed (likely ID already exists):', updateError);
+          // If update fails, check if the ID was already assigned to another record
+          const collision = await db.select().from(employees).where(eq(employees.telegramId, telegramId)).limit(1);
+          if (collision[0]) return collision[0];
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error in getEmployeeByTelegramId:', error);
   }
 
   return null;
@@ -63,26 +88,33 @@ function calculateHours(clockInTime: Date, clockOutTime?: Date): number | null {
 bot.command('start', async (ctx: MyContext) => {
   const telegramId = ctx.from!.id.toString();
   const username = ctx.from!.username;
-  const employee = await getEmployeeByTelegramId(telegramId, username);
+  
+  try {
+    const employee = await getEmployeeByTelegramId(telegramId, username);
 
-  if (!employee) {
-    await ctx.reply('⚠️ Access Denied.\n\nYou are not authorized to use this bot. Please contact your admin to be whitelisted.');
-    return;
+    if (!employee) {
+      await ctx.reply('⚠️ Access Denied.\n\nYou are not authorized to use this bot. Please contact your admin to be whitelisted.');
+      return;
+    }
+
+    if (!employee.active) {
+      await ctx.reply('⚠️ Account Inactive.\n\nYour account has been deactivated. Please contact your admin.');
+      return;
+    }
+
+    await ctx.reply(
+      `Welcome, ${employee.name}!\n\n` +
+      `Commands:\n` +
+      `/clockin - Clock in (with quiz)\n` +
+      `/clockout - Clock out\n` +
+      `/addsale - Add sales\n` +
+      `/status - View today's status`
+    );
+  } catch (error) {
+    console.error('Error in /start command:', error);
+    // Error handler bot.catch will also log this, but we provide user feedback here
+    await ctx.reply('❌ System error. Please contact admin.');
   }
-
-  if (!employee.active) {
-    await ctx.reply('⚠️ Account Inactive.\n\nYour account has been deactivated. Please contact your admin.');
-    return;
-  }
-
-  await ctx.reply(
-    `Welcome, ${employee.name}!\n\n` +
-    `Commands:\n` +
-    `/clockin - Clock in (with quiz)\n` +
-    `/clockout - Clock out\n` +
-    `/addsale - Add sales\n` +
-    `/status - View today's status`
-  );
 });
 
 bot.command('clockin', async (ctx: MyContext) => {
@@ -95,14 +127,12 @@ bot.command('clockin', async (ctx: MyContext) => {
     return;
   }
 
-  // Check if already clocked in today
-  const today = formatDate(new Date());
+  // Check if already clocked in (any date)
   const existingClockIn = await db.select()
     .from(clockIns)
     .where(and(
       eq(clockIns.employeeId, employee.id),
-      eq(clockIns.date, today),
-      sql`${clockIns.clockOutTime} IS NULL`
+      isNull(clockIns.clockOutTime)
     ))
     .limit(1);
 
@@ -133,13 +163,11 @@ bot.command('clockout', async (ctx: MyContext) => {
     return;
   }
 
-  const today = formatDate(new Date());
   const existingClockIn = await db.select()
     .from(clockIns)
     .where(and(
       eq(clockIns.employeeId, employee.id),
-      eq(clockIns.date, today),
-      sql`${clockIns.clockOutTime} IS NULL`
+      isNull(clockIns.clockOutTime)
     ))
     .limit(1);
 
@@ -175,15 +203,14 @@ bot.command('addsale', async (ctx: MyContext) => {
     return;
   }
 
-  // Check if clocked in
-  const today = formatDate(new Date());
+  // Check if clocked in (regardless of midnight crossing)
   const activeClockIn = await db.select()
     .from(clockIns)
     .where(and(
       eq(clockIns.employeeId, employee.id),
-      eq(clockIns.date, today),
-      sql`${clockIns.clockOutTime} IS NULL`
+      isNull(clockIns.clockOutTime)
     ))
+    .orderBy(desc(clockIns.clockInTime))
     .limit(1);
 
   if (!activeClockIn[0]) {
@@ -318,13 +345,13 @@ bot.on('callback_query', async (ctx: MyContext) => {
     
     if (!employee || !employee.active) return;
 
-    const activeClockIn = await db.select()
-      .from(clockIns)
-      .where(and(
-        eq(clockIns.employeeId, employee.id),
-        sql`${clockIns.clockOutTime} IS NULL`
-      ))
-      .limit(1);
+  const activeClockIn = await db.select()
+    .from(clockIns)
+    .where(and(
+      eq(clockIns.employeeId, employee.id),
+      isNull(clockIns.clockOutTime)
+    ))
+    .limit(1);
 
     const assignedCreators = await db.select({
       id: creators.id,
@@ -450,7 +477,19 @@ async function getEmployeeStats(employeeId: number, period: 'today' | 'week' | '
     ));
 
   // Calculate totals
-  const totalHours = clockInsData.reduce((sum, clock) => sum + (clock.totalHours || 0), 0);
+  const totalHours = clockInsData.reduce((sum, clock) => {
+    if (clock.totalHours) {
+      return sum + clock.totalHours;
+    }
+    // If shift is still active, calculate hours from clock-in until now
+    if (!clock.clockOutTime) {
+      const clockInTime = new Date(clock.clockInTime);
+      const now = new Date();
+      const activeHours = Math.max(0, Math.round((now.getTime() - clockInTime.getTime()) / (1000 * 60 * 60) * 100) / 100);
+      return sum + activeHours;
+    }
+    return sum;
+  }, 0);
   const totalSales = salesData.reduce((sum, sale) => sum + sale.amount, 0);
   const tipSales = salesData.filter(s => s.category === 'tip').reduce((sum, s) => sum + s.amount, 0);
   const ppvSales = salesData.filter(s => s.category === 'ppv').reduce((sum, s) => sum + s.amount, 0);

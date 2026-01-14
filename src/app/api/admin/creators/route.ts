@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { creators } from '@/lib/db/schema';
-import { eq, desc, and, or, like, sql } from 'drizzle-orm';
+import { eq, desc, and, or, like, sql, inArray } from 'drizzle-orm';
 import { sanitizeString, sanitizeUUID } from '@/lib/sanitize';
 import { requireAdminDashboard } from '@/lib/auth';
 
@@ -113,92 +113,66 @@ async function handleBulkImport(request: NextRequest) {
       );
     }
 
+    // 1. Pre-fetch existing UUIDs to avoid duplicates
+    const incomingUuids = creatorsData
+      .map(c => c.fanvueUuid)
+      .filter((uuid): uuid is string => !!uuid);
+    
+    const existingCreators = incomingUuids.length > 0 
+      ? await db.select({ uuid: creators.fanvueUuid })
+          .from(creators)
+          .where(inArray(creators.fanvueUuid, incomingUuids))
+      : [];
+    
+    const existingUuidSet = new Set(existingCreators.map(c => c.uuid));
+
+    const toInsert: any[] = [];
     const results = {
-      successful: [] as { id: number; name: string; fanvueUuid: string | null; platform: string; active: boolean; createdAt: Date }[],
-      failed: [] as { data: { name: string; fanvueUuid?: string; platform: string; active?: boolean }; error: string }[],
+      successful: 0,
+      failed: [] as { name: string; error: string }[],
     };
 
-    for (let i = 0; i < creatorsData.length; i++) {
-      const creatorData = creatorsData[i];
+    // 2. Validate and prepare data
+    for (const creatorData of creatorsData) {
+      const { name, fanvueUuid, platform, active } = creatorData;
 
-      try {
-        // Validate individual creator
-        const { name, fanvueUuid, platform, active } = creatorData;
-
-        if (!name || !platform) {
-          results.failed.push({
-            data: creatorData,
-            error: 'Name and platform are required'
-          });
-          continue;
-        }
-
-        if (!['fanvue', 'other'].includes(platform)) {
-          results.failed.push({
-            data: creatorData,
-            error: 'Platform must be "fanvue" or "other"'
-          });
-          continue;
-        }
-
-        if (platform === 'fanvue' && !fanvueUuid) {
-          results.failed.push({
-            data: creatorData,
-            error: 'Fanvue UUID is required for Fanvue creators'
-          });
-          continue;
-        }
-
-        // Check for duplicate fanvueUuid if provided
-        if (fanvueUuid) {
-          const existing = await db.select()
-            .from(creators)
-            .where(eq(creators.fanvueUuid, fanvueUuid))
-            .limit(1);
-
-          if (existing[0]) {
-            results.failed.push({
-              data: creatorData,
-              error: 'A creator with this Fanvue UUID already exists'
-            });
-            continue;
-          }
-        }
-
-        // Create creator
-        const sanitizedUuid = fanvueUuid ? sanitizeUUID(fanvueUuid) : null;
-        
-        if (platform === 'fanvue' && !sanitizedUuid) {
-          results.failed.push({
-            data: creatorData,
-            error: 'A valid Fanvue UUID is required'
-          });
-          continue;
-        }
-
-        const result = await db
-          .insert(creators)
-          .values({
-            name: sanitizeString(name, 100),
-            fanvueUuid: sanitizedUuid,
-            platform,
-            active: active !== undefined ? active : true,
-          })
-          .returning();
-
-        results.successful.push(result[0] as { id: number; name: string; fanvueUuid: string | null; platform: string; active: boolean; createdAt: Date });
-
-      } catch (innerError: unknown) {
-        const message = innerError instanceof Error ? innerError.message : 'Unknown error';
-        results.failed.push({
-          data: creatorData,
-          error: message
-        });
+      if (!name || !platform) {
+        results.failed.push({ name: name || 'Unknown', error: 'Name and platform are required' });
+        continue;
       }
+
+      if (platform === 'fanvue' && !fanvueUuid) {
+        results.failed.push({ name, error: 'Fanvue UUID is required for Fanvue creators' });
+        continue;
+      }
+
+      if (fanvueUuid && existingUuidSet.has(fanvueUuid)) {
+        results.failed.push({ name, error: 'A creator with this Fanvue UUID already exists' });
+        continue;
+      }
+
+      const sanitizedUuid = fanvueUuid ? sanitizeUUID(fanvueUuid) : null;
+      if (platform === 'fanvue' && !sanitizedUuid) {
+        results.failed.push({ name, error: 'Invalid Fanvue UUID format' });
+        continue;
+      }
+
+      toInsert.push({
+        name: sanitizeString(name, 100),
+        fanvueUuid: sanitizedUuid,
+        platform,
+        active: active !== undefined ? active : true,
+      });
+    }
+
+    // 3. Perform bulk insertion
+    if (toInsert.length > 0) {
+      await db.insert(creators).values(toInsert);
+      results.successful = toInsert.length;
     }
 
     return NextResponse.json({
-      message: `Bulk import completed: ${results.successful.length} successful, ${results.failed.length} failed`,
+      message: `Bulk import completed: ${results.successful} successful, ${results.failed.length} failed`,
       results
     });
 
@@ -207,7 +181,7 @@ async function handleBulkImport(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       { error: `Failed to process bulk import: ${message}` },
-      { status: 400 }
+      { status: 500 }
     );
   }
 }

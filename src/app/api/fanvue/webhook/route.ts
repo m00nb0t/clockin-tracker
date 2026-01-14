@@ -112,9 +112,12 @@ export async function POST(request: NextRequest) {
     const creator = creatorResult[0];
 
     // Check for duplicate tip processing (concurrency protection)
+    // We include senderUuid to prevent collisions if two fans tip the same amount at the same time
+    const generatedTipId = `${recipientUuid}_${senderUuid}_${timestamp}_${price}`;
+    
     const existingTip = await db.select()
       .from(fanvueTips)
-      .where(eq(fanvueTips.tipId, `${recipientUuid}_${timestamp}_${price}`))
+      .where(eq(fanvueTips.tipId, generatedTipId))
       .limit(1);
 
     if (existingTip[0]) {
@@ -132,7 +135,7 @@ export async function POST(request: NextRequest) {
       try {
         await db.transaction(async (tx) => {
           // Create auto-assigned sales record
-          const salesRecord = await tx.insert(sales).values({
+          await tx.insert(sales).values({
             employeeId: activeEmployee.employeeId,
             category: 'tip',
             amount: tipAmount,
@@ -140,18 +143,26 @@ export async function POST(request: NextRequest) {
             description: `Fanvue tip from ${creator.name}`,
             source: 'fanvue_auto',
             creatorId: creator.id,
-          }).returning();
+          });
+
+          // Fetch the inserted sales ID (Drizzle doesn't always return it reliably on SQLite without .returning())
+          const lastSale = await tx.select({ id: sales.id })
+            .from(sales)
+            .orderBy(desc(sales.id))
+            .limit(1);
+          
+          const salesId = lastSale[0]?.id;
 
           // Record the tip
           await tx.insert(fanvueTips).values({
-            tipId: `${recipientUuid}_${timestamp}_${price}`, // Generate unique ID
+            tipId: generatedTipId,
             recipientUuid,
             senderUuid,
             amount: tipAmount,
             timestamp: new Date(timestamp),
             context,
             assignedEmployeeId: activeEmployee.employeeId,
-            salesId: salesRecord[0].id,
+            salesId: salesId,
             status: 'processed',
           });
         });
@@ -191,7 +202,7 @@ export async function POST(request: NextRequest) {
       // Record unassigned tip for admin review
       try {
         await db.insert(fanvueTips).values({
-          tipId: `${recipientUuid}_${timestamp}_${price}`,
+          tipId: generatedTipId,
           recipientUuid,
           senderUuid,
           amount: tipAmount,

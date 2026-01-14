@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { quizQuestions } from '@/lib/db/schema';
-import { desc, sql } from 'drizzle-orm';
+import { desc, sql, eq } from 'drizzle-orm';
 import { requireAdminDashboard } from '@/lib/auth';
 
 // GET /api/admin/quiz - List all quiz questions
@@ -11,17 +11,29 @@ export async function GET(request: NextRequest) {
     requireAdminDashboard(request);
 
     const questions = await db
-      .select()
+      .select({
+        id: quizQuestions.id,
+        sequenceNumber: quizQuestions.sequenceNumber,
+        question: quizQuestions.question,
+        optionA: quizQuestions.optionA,
+        optionB: quizQuestions.optionB,
+        optionC: quizQuestions.optionC,
+        optionD: quizQuestions.optionD,
+        correctAnswer: quizQuestions.correctAnswer,
+        explanation: quizQuestions.explanation,
+        active: quizQuestions.active,
+        createdAt: quizQuestions.createdAt,
+      })
       .from(quizQuestions)
-      .orderBy(desc(quizQuestions.createdAt));
+      .orderBy(quizQuestions.sequenceNumber);
 
     return NextResponse.json(questions);
   } catch (error: unknown) {
     console.error('Error fetching quiz questions:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to fetch quiz questions: ${message}` },
-      { status: 400 }
+      { error: `Database error: ${message}` },
+      { status: 500 }
     );
   }
 }
@@ -56,7 +68,7 @@ export async function POST(request: NextRequest) {
     const nextSequence = (maxSequence[0]?.maxSeq || 0) + 1;
 
     // Create quiz question
-    const result = await db
+    await db
       .insert(quizQuestions)
       .values({
         sequenceNumber: nextSequence,
@@ -68,16 +80,34 @@ export async function POST(request: NextRequest) {
         correctAnswer,
         explanation: explanation?.trim() || null,
         active: true,
+      });
+
+    // Fetch the inserted record to ensure correct mapping
+    const result = await db
+      .select({
+        id: quizQuestions.id,
+        sequenceNumber: quizQuestions.sequenceNumber,
+        question: quizQuestions.question,
+        optionA: quizQuestions.optionA,
+        optionB: quizQuestions.optionB,
+        optionC: quizQuestions.optionC,
+        optionD: quizQuestions.optionD,
+        correctAnswer: quizQuestions.correctAnswer,
+        explanation: quizQuestions.explanation,
+        active: quizQuestions.active,
+        createdAt: quizQuestions.createdAt,
       })
-      .returning();
+      .from(quizQuestions)
+      .where(eq(quizQuestions.sequenceNumber, nextSequence))
+      .limit(1);
 
     return NextResponse.json(result[0]);
   } catch (error: unknown) {
     console.error('Error creating quiz question:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Failed to create quiz question: ${message}` },
-      { status: 400 }
+      { error: `Database error: ${message}` },
+      { status: 500 }
     );
   }
 }

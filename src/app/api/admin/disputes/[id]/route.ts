@@ -42,7 +42,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // To make this fully production ready, we need to know WHICH admin did it.
     // For now, let's at least ensure the database has an admin we can attribute this to.
 
-    const result = await db
+    await db
       .update(tipDisputes)
       .set({
         status,
@@ -50,8 +50,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         resolvedBy: 1, // Defaulting to the primary admin record for now
         resolvedAt: new Date(),
       })
-      .where(eq(tipDisputes.id, disputeId))
-      .returning();
+      .where(eq(tipDisputes.id, disputeId));
+
+    const result = await db.select().from(tipDisputes).where(eq(tipDisputes.id, disputeId)).limit(1);
 
     if (!result[0]) {
       return NextResponse.json(

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { formatGmt8Date } from '@/lib/dateUtils';
 
 interface SalesEntry {
   id: number;
@@ -57,7 +58,7 @@ export default function SalesManagement({ token }: { token: string }) {
     employeeId: 0,
     category: 'tip',
     amount: '',
-    date: new Date(new Date().getTime() + (8 * 60 * 60 * 1000)).toISOString().split('T')[0],
+    date: formatGmt8Date(),
     description: '',
   });
 
@@ -180,7 +181,7 @@ export default function SalesManagement({ token }: { token: string }) {
       employeeId: 0,
       category: 'tip',
       amount: '',
-      date: new Date(new Date().getTime() + (8 * 60 * 60 * 1000)).toISOString().split('T')[0],
+      date: formatGmt8Date(),
       description: '',
     });
   };

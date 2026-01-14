@@ -23,56 +23,74 @@ export async function POST(request: NextRequest) {
     const today = formatGmt8Date();
     const now = new Date();
 
-    // Check if already clocked in today
-    const existingClockIn = await db.select()
+    // Check if they already have an active clock-in (any day)
+    const activeClockIn = await db.select()
       .from(clockIns)
       .where(and(
         eq(clockIns.employeeId, employee.id),
-        eq(clockIns.date, today)
-      ))
-      .limit(1);
-
-    if (existingClockIn[0]) {
-      return NextResponse.json({ error: 'Already clocked in today' }, { status: 400 });
-    }
-
-    // Check if they have an open clock-in from previous days (forgot to clock out)
-    const openClockIn = await db.select()
-      .from(clockIns)
-      .where(and(
-        eq(clockIns.employeeId, employee.id),
-        sql`${clockIns.clockOutTime} IS NULL`,
-        sql`date(${clockIns.date}) < date(${today})`
+        sql`${clockIns.clockOutTime} IS NULL`
       ))
       .orderBy(desc(clockIns.clockInTime))
       .limit(1);
 
-    if (openClockIn[0]) {
-      const clockInTime = new Date(openClockIn[0].clockInTime);
+    if (activeClockIn[0]) {
+      const clockInTime = new Date(activeClockIn[0].clockInTime);
       const hoursWorked = (now.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
 
+      // If they forgot to clock out from a previous day, or have a very long shift
       if (hoursWorked > 14) {
         return NextResponse.json({
           error: 'Forgot to clock out?',
-          message: `You appear to have forgotten to clock out from ${openClockIn[0].date}. This would result in ${hoursWorked.toFixed(1)} hours worked.`,
+          message: `You appear to have forgotten to clock out from ${activeClockIn[0].date}. This would result in ${hoursWorked.toFixed(1)} hours worked.`,
           requiresClockOut: true,
           openClockIn: {
-            id: openClockIn[0].id,
-            date: openClockIn[0].date,
-            clockInTime: openClockIn[0].clockInTime
+            id: activeClockIn[0].id,
+            date: activeClockIn[0].date,
+            clockInTime: activeClockIn[0].clockInTime
           }
         }, { status: 400 });
       }
+
+      // Normal case: already clocked in
+      return NextResponse.json({ 
+        error: 'Already clocked in',
+        message: 'You currently have an active shift. Please clock out before starting a new one.'
+      }, { status: 400 });
     }
 
-    // Create clock-in record
-    const clockInResult = await db.insert(clockIns).values({
-      employeeId: employee.id,
-      clockInTime: now,
-      date: today,
-    }).returning();
+    // Create clock-in record within a transaction to ensure atomicity
+    const result = await db.transaction(async (tx) => {
+      // Re-verify inside transaction to prevent race conditions
+      const doubleCheck = await tx.select()
+        .from(clockIns)
+        .where(and(
+          eq(clockIns.employeeId, employee.id),
+          sql`${clockIns.clockOutTime} IS NULL`
+        ))
+        .limit(1);
+      
+      if (doubleCheck[0]) {
+        throw new Error('Concurrent clock-in detected');
+      }
 
-    const clockInId = clockInResult[0].id;
+      const clockIn = await tx.insert(clockIns).values({
+        employeeId: employee.id,
+        clockInTime: now,
+        date: today,
+      });
+
+      // Since we can't reliably use .returning() on SQLite in some environments,
+      // and we need the ID for creator associations, fetch the latest ID for this employee
+      const inserted = await tx.select({ id: clockIns.id })
+        .from(clockIns)
+        .where(eq(clockIns.employeeId, employee.id))
+        .orderBy(desc(clockIns.id))
+        .limit(1);
+      
+      return inserted[0];
+    });
+
+    const clockInId = result.id;
 
     // Create clock-in creator associations if provided
     if (creatorIds && Array.isArray(creatorIds) && creatorIds.length > 0) {
@@ -109,6 +127,6 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error('Clock-in error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: `Internal server error: ${message}` }, { status: 400 });
+    return NextResponse.json({ error: `Internal server error: ${message}` }, { status: 500 });
   }
 }

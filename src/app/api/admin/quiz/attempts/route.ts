@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
   } catch (error: unknown) {
     console.error('Error fetching quiz attempts:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: `Failed to fetch quiz results: ${message}` }, { status: 400 });
+    return NextResponse.json({ error: `Database error: ${message}` }, { status: 500 });
   }
 }
 

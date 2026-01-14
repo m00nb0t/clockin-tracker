@@ -100,7 +100,7 @@ export async function PUT(
     }
 
     // Update sales entry
-    const result = await db
+    await db
       .update(sales)
       .set({
         employeeId,
@@ -109,8 +109,9 @@ export async function PUT(
         date,
         description: description?.trim() || null,
       })
-      .where(eq(sales.id, salesId))
-      .returning();
+      .where(eq(sales.id, salesId));
+
+    const result = await db.select().from(sales).where(eq(sales.id, salesId)).limit(1);
 
     if (!result[0]) {
       return NextResponse.json(

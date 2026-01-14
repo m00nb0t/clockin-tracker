@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const actualAttemptNumber = existingAttempts.length + 1;
 
     // Record quiz attempt
-    const result = await db
+    await db
       .insert(quizAttempts)
       .values({
         employeeId: employeeResult[0].id,
@@ -52,8 +52,15 @@ export async function POST(request: NextRequest) {
         selectedAnswer,
         correct: correct || false,
         attemptNumber: actualAttemptNumber,
-      })
-      .returning();
+      });
+
+    const result = await db.select().from(quizAttempts)
+      .where(and(
+        eq(quizAttempts.employeeId, employeeResult[0].id),
+        eq(quizAttempts.questionId, questionId)
+      ))
+      .orderBy(desc(quizAttempts.id))
+      .limit(1);
 
     return NextResponse.json(result[0]);
   } catch (error: unknown) {

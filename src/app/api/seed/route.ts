@@ -62,8 +62,9 @@ export async function POST(request: NextRequest) {
 
     const results = [];
     for (const question of questions) {
-      const result = await db.insert(quizQuestions).values(question).returning();
-      results.push(result[0]);
+      await db.insert(quizQuestions).values(question);
+      const inserted = await db.select().from(quizQuestions).orderBy(desc(quizQuestions.id)).limit(1);
+      results.push(inserted[0]);
     }
 
     return NextResponse.json({
