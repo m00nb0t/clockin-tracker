@@ -4,7 +4,7 @@ import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core
 export const employees = sqliteTable('employees', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
-  telegramId: text('telegram_id').unique().notNull(),
+  telegramId: text('telegram_id').notNull(),
   role: text('role').default('employee').notNull(),
   active: integer('active', { mode: 'boolean' }).default(true).notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
@@ -23,11 +23,11 @@ export const clockIns = sqliteTable('clock_ins', {
   clockOutTime: integer('clock_out_time', { mode: 'timestamp' }),
   date: text('date').notNull(), // YYYY-MM-DD format
   totalHours: real('total_hours'),
-}, (table) => ({
+}/*, (table) => ({
   employeeIdIdx: index('clock_ins_employee_id_idx').on(table.employeeId),
   clockInTimeIdx: index('clock_ins_clock_in_time_idx').on(table.clockInTime),
   dateIdx: index('clock_ins_date_idx').on(table.date),
-}));
+})*/);
 
 export const creators = sqliteTable('creators', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -36,10 +36,10 @@ export const creators = sqliteTable('creators', {
   platform: text('platform').default('fanvue').notNull(), // 'fanvue', 'other'
   active: integer('active', { mode: 'boolean' }).default(true).notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
-}, (table) => ({
+}/*, (table) => ({
   fanvueUuidIdx: index('creators_fanvue_uuid_idx').on(table.fanvueUuid),
   activeIdx: index('creators_active_idx').on(table.active),
-}));
+})*/);
 
 export const clockInCreators = sqliteTable('clock_in_creators', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -58,15 +58,15 @@ export const sales = sqliteTable('sales', {
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
   source: text('source').default('manual').notNull(), // 'manual' or 'fanvue_auto'
   creatorId: integer('creator_id').references(() => creators.id), // Which creator this sale is for
-}, (table) => ({
+}/*, (table) => ({
   dateIdx: index('sales_date_idx').on(table.date),
   sourceIdx: index('sales_source_idx').on(table.source),
   creatorIdIdx: index('sales_creator_id_idx').on(table.creatorId),
-}));
+})*/);
 
 export const fanvueTips = sqliteTable('fanvue_tips', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  tipId: text('tip_id').unique().notNull(), // Fanvue's tip ID
+  tipId: text('tip_id').notNull(), // Fanvue's tip ID
   recipientUuid: text('recipient_uuid').notNull(),
   senderUuid: text('sender_uuid').notNull(),
   amount: real('amount').notNull(), // In dollars (converted from cents)
@@ -76,12 +76,12 @@ export const fanvueTips = sqliteTable('fanvue_tips', {
   salesId: integer('sales_id').references(() => sales.id), // Links to auto-created sales record
   status: text('status').default('processed').notNull(), // 'processed', 'unassigned'
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
-}, (table) => ({
+}/*, (table) => ({
   tipIdIdx: index('fanvue_tips_tip_id_idx').on(table.tipId),
   recipientUuidIdx: index('fanvue_tips_recipient_uuid_idx').on(table.recipientUuid),
   timestampIdx: index('fanvue_tips_timestamp_idx').on(table.timestamp),
   assignedEmployeeIdx: index('fanvue_tips_assigned_employee_idx').on(table.assignedEmployeeId),
-}));
+})*/);
 
 export const tipDisputes = sqliteTable('tip_disputes', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -104,7 +104,7 @@ export const quizSettings = sqliteTable('quiz_settings', {
 
 export const quizQuestions = sqliteTable('quiz_questions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  sequenceNumber: integer('sequence_number').notNull(), // 1, 2, 3, 4... for ordering
+  sequenceNumber: integer('sequence_number').default(0).notNull(), // 1, 2, 3, 4... for ordering
   question: text('question').notNull(),
   optionA: text('option_a').notNull(),
   optionB: text('option_b').notNull(),
