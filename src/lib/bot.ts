@@ -15,7 +15,11 @@ interface SessionData {
 
 type MyContext = Context & SessionFlavor<SessionData>;
 
-export const bot = new Bot<MyContext>(process.env.TELEGRAM_BOT_TOKEN!);
+export const bot = new Bot<MyContext>(process.env.TELEGRAM_BOT_TOKEN!, {
+  client: {
+    canCheckReuse: false,
+  },
+});
 
 // Set up session middleware
 bot.use(session({
