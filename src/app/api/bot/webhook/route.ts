@@ -4,17 +4,13 @@ import crypto from 'crypto';
 import { webhookCallback } from 'grammy';
 
 function verifyTelegramWebhook(request: NextRequest): boolean {
-  const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET;
+  const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
   if (!secretToken) return true; 
 
   const signature = request.headers.get('x-telegram-bot-api-secret-token');
-  if (!signature || signature.length !== secretToken.length) return false;
+  if (!signature) return false;
 
-  try {
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(secretToken));
-  } catch (error) {
-    return false;
-  }
+  return signature.trim() === secretToken;
 }
 
 const handleUpdate = webhookCallback(bot, 'std/http');
