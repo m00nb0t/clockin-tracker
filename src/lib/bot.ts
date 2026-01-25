@@ -15,7 +15,19 @@ interface SessionData {
 
 type MyContext = Context & SessionFlavor<SessionData>;
 
-export const bot = new Bot<MyContext>(process.env.TELEGRAM_BOT_TOKEN!);
+export const bot = new Bot<MyContext>(process.env.TELEGRAM_BOT_TOKEN!, {
+  botInfo: {
+    id: 8340509945,
+    is_bot: true,
+    first_name: "Clockin Tracker Bot",
+    username: "clockin_tracker_bot",
+    can_join_groups: true,
+    can_read_all_group_messages: false,
+    supports_inline_queries: false,
+    can_connect_to_business: false,
+    has_main_web_app: false
+  }
+});
 
 // Set up session middleware
 bot.use(session({

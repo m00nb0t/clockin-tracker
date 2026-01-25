@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bot from '@/lib/bot';
-import crypto from 'crypto';
 import { webhookCallback } from 'grammy';
 
 const handleUpdate = webhookCallback(bot, 'std/http');
@@ -8,9 +7,12 @@ const handleUpdate = webhookCallback(bot, 'std/http');
 export async function POST(request: NextRequest) {
   try {
     const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
-    const signature = request.headers.get('x-telegram-bot-api-secret-token');
+    const signature = request.headers.get('x-telegram-bot-api-secret-token')?.trim();
     
-    if (secretToken && (!signature || signature.trim() !== secretToken)) {
+    // Telegram will only include this header if `secret_token` was set via `setWebhook`.
+    // To avoid breaking webhook delivery when the bot is configured without `secret_token`,
+    // only enforce strict matching when the header is present and non-empty.
+    if (secretToken && signature && signature !== secretToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
